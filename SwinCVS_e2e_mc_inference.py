@@ -43,9 +43,17 @@ warnings.filterwarnings("ignore")
 
 ##############################################################################################
 ##############################################################################################
-seed = 2
-print(f"Current seed: {seed}")
+# Get path to current directory
+pwd = Path.cwd()
+print(f"cwd: {pwd}")
 
+# Load config
+cfg = 'config/SwinCVS.yaml'
+config_dict = read_config(cfg)
+config = config_to_yacs(config_dict)
+
+seed = config.SEED
+print(f"Current seed: {seed}")
 # Environment Standardisation
 random.seed(seed)                      # Set random seed
 np.random.seed(seed)                   # Set NumPy seed
@@ -57,15 +65,6 @@ os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # CUDA workspace config
 
 ##############################################################################################
 ##############################################################################################
-# Get path to current directory
-pwd = Path.cwd()
-print(f"cwd: {pwd}")
-
-# Load config
-cfg = 'config/SwinCVS.yaml'
-config_dict = read_config(cfg)
-config = config_to_yacs(config_dict)
-
 # Load dataset dataframes
 image_folder = pwd.parent / 'SurgLatentGraph/data/mmdet_datasets/endoscapes'
 print(f"Dataset loaded from: {image_folder}")
@@ -95,7 +94,7 @@ transform_sequence = transforms.Compose([   transforms.CenterCrop(480),
                                         ])
 
 # Dataset
-test_dataset = EndoscapesSwinLSTM_Dataset(test_dataframe[::5], transform_sequence)
+test_dataset = EndoscapesSwinLSTM_Dataset(test_dataframe, transform_sequence)
 
 # Dataloaders
 test_dataloader = DataLoader(   test_dataset,

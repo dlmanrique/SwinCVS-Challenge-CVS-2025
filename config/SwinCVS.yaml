@@ -1,4 +1,5 @@
 EXPERIMENT_NAME: 'SwinCVS_inference'
+SEED: 2
 DATA:
   IMG_SIZE: 384
 BACKBONE:
