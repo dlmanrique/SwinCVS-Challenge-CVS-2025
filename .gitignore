@@ -1,6 +1,4 @@
 /weights
 /results
-testing.ipynb
 scripts/__pycache__
-SwinCVS_e2e_mc.ipynb
 SwinLSTMend2endraw_inference.qsub.sh
