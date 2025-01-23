@@ -20,16 +20,22 @@ def build_model(config):
                                 patch_norm=config.BACKBONE.SWINV2.PATCH_NORM,
                                 use_checkpoint=config.BACKBONE.USE_CHECKPOINT,
                                 pretrained_window_sizes=config.BACKBONE.SWINV2.PRETRAINED_WINDOW_SIZES)
-    # Load imagenet weights onto the backbone
-    if config.BACKBONE.PRETRAINED is not None:
-        load_pretrained(config, model)
     
-    # Change classifier for the CVS task (3 classes)
-    model.head = nn.Linear(in_features=1024, out_features=3, bias=True)
-
-    # Load backbone weights finetuned on Endoscapes2023 (if required)
-    if config.MODEL.ENDOSCAPES_PRETRAINED is not None:
-            model.load_state_dict(torch.load(config.MODEL.ENDOSCAPES_PRETRAINED))
+    # Load imagenet weights onto the backbone
+    if not config.MODEL.INFERENCE:
+        try:
+            if 'swinv2_base_patch4' in config.BACKBONE.PRETRAINED:
+            # Use imagenet pretrained weights in the backbone
+                load_pretrained(config, model)
+            elif config.BACKBONE.PRETRAINED is not None:   
+                # Use endoscapes pretrained weights in the backbone (for frozen model version)
+                print(f"\nLoading backbone weight {config.BACKBONE.PRETRAINED}")
+                model.head = nn.Linear(in_features=1024, out_features=3, bias=True)
+                weights = 'weights/' + config.BACKBONE.PRETRAINED
+                model.load_state_dict(torch.load(weights))
+            print(f"Backbone weights loaded successfully!")
+        except:
+            print("Backbone NOT pretrained!")
     
     if config.MODEL.LSTM:
         # Remove MLP classifier
@@ -40,18 +46,18 @@ def build_model(config):
             for param in model.parameters():
                 param.requires_grad = False
 
-        swincvs = SwinLSTMModel(  model,
-                                        lstm_hidden_size = config.MODEL.LSTM_PARAMS.HIDDEN_SIZE,
-                                        num_lstm_layers=config.MODEL.LSTM_PARAMS.NUM_LAYERS,
-                                        multiclassifier = config.MODEL.MULTICLASSIFIER,
-                                        inference = config.MODEL.INFERENCE)
+        swincvs = SwinLSTMModel(model, config)
         return swincvs
+    else:
+        # Only runs if the pure SwinV2 model option is selected
+        model.head = nn.Linear(in_features=1024, out_features=3, bias=True)
 
     return model
 
 def load_pretrained(config, model):
-    print(f"Loading backbone weight {config.BACKBONE.PRETRAINED}")
-    checkpoint = torch.load(config.BACKBONE.PRETRAINED, map_location='cpu')
+    print(f"\nLoading backbone weight {config.BACKBONE.PRETRAINED}")
+    weights = 'weights/' + config.BACKBONE.PRETRAINED
+    checkpoint = torch.load(weights, map_location='cpu')
     state_dict = checkpoint['model']
 
     # delete relative_position_index since we always re-init it
@@ -132,29 +138,30 @@ def load_pretrained(config, model):
 
     msg = model.load_state_dict(state_dict, strict=False)
 
-    print(f"Backbone weights loaded successfully!\n")
-
     del checkpoint
     torch.cuda.empty_cache()
 
 class SwinLSTMModel(nn.Module):
-    def __init__(self, swinv2_model, lstm_hidden_size=256, num_lstm_layers=1, num_classes=3, multiclassifier = False, inference=False):
+    def __init__(self, swinv2_model, config, num_classes=3):
         super(SwinLSTMModel, self).__init__()
         self.swinv2_model = swinv2_model
-        self.lstm_hidden_size = lstm_hidden_size
+        self.lstm_hidden_size = config.MODEL.LSTM_PARAMS.HIDDEN_SIZE
         self.num_classes = num_classes
-        self.multiclassifier = multiclassifier # Toggle for additional classifier after the backbone
-        self.inference = inference  # Toggle for inference mode
+        # Toggle for additional classifier after the backbone
+        if config.MODEL.E2E != True:
+            self.multiclassifier = False
+        else: self.multiclassifier = config.MODEL.MULTICLASSIFIER 
+        self.inference = config.MODEL.INFERENCE  # Toggle for inference mode
         
         # LSTM for temporal sequence processing
         self.lstm = nn.LSTM(input_size=self.swinv2_model.num_features,
-                            hidden_size=lstm_hidden_size,
-                            num_layers=num_lstm_layers,
+                            hidden_size=self.lstm_hidden_size,
+                            num_layers=config.MODEL.LSTM_PARAMS.NUM_LAYERS,
                             batch_first=True)
         
         # Fully connected layer for classification after LSTM
-        self.fc_lstm = nn.Linear(lstm_hidden_size, num_classes)
-        if multiclassifier:
+        self.fc_lstm = nn.Linear(self.lstm_hidden_size, num_classes)
+        if self.multiclassifier:
             # New fully connected layer for mid-stream classification (SwinV2 feature classification)
             self.fc_swin = nn.Linear(self.swinv2_model.num_features, num_classes)
 

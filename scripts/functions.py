@@ -26,8 +26,62 @@ from math import inf
 from timm.scheduler.cosine_lr import CosineLRScheduler
 import yaml
 from yacs.config import CfgNode as CN
+import re
 
 # FUNCTIONS
+def find_seed_in_weight(weight_name):
+    match = re.search(r'sd(\d+)', weight_name)
+    if match:
+        return match.group(1)
+    else:
+        return False
+
+
+def validate_config(config):
+    print(f"\nModel settings:")
+    # Check model setup settings
+    if config.MODEL.LSTM and config.MODEL.E2E and config.MODEL.MULTICLASSIFIER:
+        print("End-to-end SwinCVS: SwinV2 backbone, with LSTM and 'multiclassifier'")
+        experiment_name = 'SwinCVS_E2E_MC'
+    elif config.MODEL.LSTM and config.MODEL.E2E and not config.MODEL.MULTICLASSIFIER:
+        print("End-to-end SwinCVS without multiclassifier")
+        experiment_name = 'SwinCVS_E2E'
+    elif config.MODEL.LSTM and not config.MODEL.E2E:
+        print("Frozen SwinCVS: frozen weights in SwinV2 backbone, with LSTM classifier")
+        experiment_name = 'SwinCVS_frozen'
+    elif not config.MODEL.LSTM:
+        print("SwinV2 model selected (not SwinCVS!)")
+        experiment_name = 'SwinV2_backbone'
+    else:
+        print("Custom model settings detected...")
+        print(f"LSTM={config.MODEL.LSTM} | E2E={config.MODEL.E2E} | MULTICLASSIFIER={config.MODEL.MULTICLASSIFIER}")
+        experiment_name = f"CustomModel"
+    # Check if inference
+    if config.MODEL.INFERENCE:
+        assert config.MODEL.INFERENCE_WEIGHTS is not None, "Model selected for INFERENCE, but no weights were provided!"
+        print("Script set for inference - NOT TRAINING.")
+
+    # Otherwise confirm backbone weights
+    else:
+        try:
+            if 'swinv2_base_patch4' in config.BACKBONE.PRETRAINED:
+                print("Backbone weights: ImageNet")
+                experiment_name += "_IMNP"
+            elif config.BACKBONE.PRETRAINED is not None:
+                print(f"Backbone weights: '{config.BACKBONE.PRETRAINED}'")
+                experiment_name += "_ENDP"
+        except:
+            print('Backbone weights: None!')
+    return experiment_name
+
+def update_params(alpha, beta, epoch):
+    if epoch <= 4:
+        pass
+    else:
+        alpha -= 0.04
+        beta += 0.04
+        print(f"New alpha/beta = {alpha, beta} @ epoch {epoch+1}")
+    return alpha, beta
 
 def read_config(config_file):
     """
@@ -110,7 +164,7 @@ def ampscaler_get_grad_norm(parameters, norm_type: float = 2.0) -> torch.Tensor:
     return total_norm
 
 
-def build_optimizer(config, model, multiclass = False, **kwargs):
+def build_optimizer(config, model, **kwargs):
     skip = {}
     skip_keywords = {}
     if hasattr(model, 'no_weight_decay'):
@@ -123,22 +177,22 @@ def build_optimizer(config, model, multiclass = False, **kwargs):
     opt_lower = config.TRAIN.OPTIMIZER.NAME.lower()
     optimizer = None
 
-    if multiclass:
-        parameters2= [ {'params': model.swinv2_model.parameters(), 'lr': config.TRAIN.OPTIMIZER.ENCODER_LR},
-                    {'params': model.fc_swin.parameters(), 'lr': config.TRAIN.OPTIMIZER.ENCODER_LR},
-                    {'params': model.lstm.parameters(), 'lr': config.TRAIN.OPTIMIZER.CLASSIFIER_LR},
-                    {'params': model.fc_lstm.parameters(), 'lr': config.TRAIN.OPTIMIZER.CLASSIFIER_LR}]
-    else:
-        parameters2= [ {'params': model.swinv2_model.parameters(), 'lr': config.TRAIN.OPTIMIZER.ENCODER_LR},
+    # SwinCVS with Multiclassifier (requires E2E=True)
+    if config.MODEL.E2E and config.MODEL.MULTICLASSIFIER:
+            parameters2= [  {'params': model.swinv2_model.parameters(), 'lr': config.TRAIN.OPTIMIZER.ENCODER_LR},
+                            {'params': model.fc_swin.parameters(), 'lr': config.TRAIN.OPTIMIZER.ENCODER_LR},
+                            {'params': model.lstm.parameters(), 'lr': config.TRAIN.OPTIMIZER.CLASSIFIER_LR},
+                            {'params': model.fc_lstm.parameters(), 'lr': config.TRAIN.OPTIMIZER.CLASSIFIER_LR}]
+    # SwinCVS without Multiclassifier
+    elif config.MODEL.LSTM:
+        parameters2= [  {'params': model.swinv2_model.parameters(), 'lr': config.TRAIN.OPTIMIZER.ENCODER_LR},
                         {'params': model.lstm.parameters(), 'lr': config.TRAIN.OPTIMIZER.CLASSIFIER_LR },
-                        {'params': model.fc.parameters(), 'lr': config.TRAIN.OPTIMIZER.CLASSIFIER_LR}]
+                        {'params': model.fc_lstm.parameters(), 'lr': config.TRAIN.OPTIMIZER.CLASSIFIER_LR}]
+    # Bare backbone - swinV2
+    else:
+        parameters2= [  {'params': model.parameters(), 'lr': config.TRAIN.OPTIMIZER.ENCODER_LR}]
 
-
-
-    if opt_lower == 'sgd':
-        optimizer = optim.SGD(parameters, momentum=config.TRAIN.OPTIMIZER.MOMENTUM, nesterov=True,
-                              lr=config.TRAIN.BASE_LR, weight_decay=config.TRAIN.OPTIMIZER.WEIGHT_DECAY)
-    elif opt_lower == 'adamw':
+    if opt_lower == 'adamw':
         optimizer = optim.AdamW(parameters2, eps=config.TRAIN.OPTIMIZER.EPS, betas=config.TRAIN.OPTIMIZER.BETAS,
                                 weight_decay=config.TRAIN.OPTIMIZER.WEIGHT_DECAY)
     else:
@@ -235,13 +289,13 @@ def get_three_dataframes(image_folder, lstm = False):
         train_images = [img for img in all_image_names if 1 <= int(img.split('_')[0]) <= 120]
         val_images = [img for img in all_image_names if 121 <= int(img.split('_')[0]) <= 161]
         test_images = [img for img in all_image_names if 162 <= int(img.split('_')[0]) <= 201]
-        print('$Dataframes$: Adding unlabelled images...')
+        # Adding unlabelled images
         train_dataframe = add_unlabelled_imgs(train_images, train_dataframe)
         val_dataframe = add_unlabelled_imgs(val_images, val_dataframe)
         test_dataframe = add_unlabelled_imgs(test_images, test_dataframe)
 
         # Generate 5 frame sequences and update format to include paths to images
-        print('$Dataframes$: Updating dataframes...')
+        # Updating dataframes
         train_dataframe = get_frame_sequence_dataframe(train_dataframe, train_dir)
         val_dataframe = get_frame_sequence_dataframe(val_dataframe, val_dir)
         test_dataframe = get_frame_sequence_dataframe(test_dataframe, test_dir)
@@ -344,106 +398,6 @@ def get_frame_sequence_dataframe(dataframe, image_folder):
     updated_dataframe = pd.DataFrame(new_dataframe_rows)
     
     return updated_dataframe
-
-class EndoscapesSwinLSTM_Dataset3imgs(Dataset):
-    def __init__(self, image_dataframe, transform_sequence):
-        self.image_dataframe = image_dataframe
-        self.transforms = transform_sequence
-        
-    def __len__(self):
-        return len(self.image_dataframe)
-    
-    def __getitem__(self, idx):
-        sequence_info = self.image_dataframe.iloc[idx]
-        image_f2_path = sequence_info['f2']
-        image_f3_path = sequence_info['f3']
-        image_f4_path = sequence_info['f4']
-        paths = [image_f2_path, image_f3_path, image_f4_path]
-        
-        image_list = []
-        if self.transforms:
-            seed = random.randint(0, 2**32) # Added
-            for path in paths:
-                image = Image.open(path)
-                torch.manual_seed(seed) # Added
-                random.seed(seed) # Added
-                image = self.transforms(image)
-                image = (image-torch.min(image)) / (-torch.min(image)+torch.max(image))
-                image_list.append(image)
-        else:
-            for path in paths:
-                image = Image.open(path)
-                image_list.append(image)
-        
-        images = torch.stack(image_list)
-        label = torch.tensor(sequence_info['classification'])
-
-        return images, label
-    
-def get_frame_sequence_dataframe3imgs(dataframe, image_folder):
-    new_dataframe_rows = []
-    # Iterate over each video so as not to create intravid sequences
-    for video in dataframe['vid'].unique():
-        temp_vid_dataframe = dataframe.loc[dataframe['vid'] == video]
-        # Iterate over each datapoint in the dataframe
-        for idx in range(len(temp_vid_dataframe)-5):
-            # Extract 5 frame sequences
-            five_seq_dataframe = temp_vid_dataframe.iloc[idx:idx+5]
-
-            # Check if the last frame in the sequence is labelled
-            if five_seq_dataframe.iloc[4]['C1'] != -1:
-                # Update paths to images for all five frames
-                paths = []
-                for datapoint in five_seq_dataframe.iterrows():
-                    paths.append(generate_path(datapoint[1], image_folder))
-                # Get class of the last frame
-                classification = get_class(five_seq_dataframe.iloc[4])
-                # Put it in a new row of the dataframe
-                new_row = { 'f2': paths[2], 'f3': paths[3], 'f4': paths[4], 'classification': classification}
-                new_dataframe_rows.append(new_row)
-
-    updated_dataframe = pd.DataFrame(new_dataframe_rows)
-    
-    return updated_dataframe
-
-def get_three_dataframes3imgs(image_folder, lstm = False):
-    train_dir = image_folder / 'train'
-    val_dir  = image_folder / 'val'
-    test_dir = image_folder / 'test'
-    train_file = [x for x in os.listdir(train_dir) if 'json' and 'ds_coco' in x][0]
-    val_file = [x for x in os.listdir(val_dir) if 'json' and 'ds_coco' in x][0]
-    test_file = [x for x in os.listdir(test_dir) if 'json' and 'ds_coco' in x][0]
-
-    train_dataframe = get_dataframe(train_dir / train_file)
-    val_dataframe = get_dataframe(val_dir / val_file)
-    test_dataframe = get_dataframe(test_dir / test_file)
-
-    if lstm:
-        # Add unlabelled images to the dataframe
-        with open(image_folder / 'all' / 'annotation_coco.json', 'r') as file:
-            all_images = json.load(file)  # Load JSON data
-        all_image_names = [x['file_name'] for x in all_images['images']]
-
-        train_images = [img for img in all_image_names if 1 <= int(img.split('_')[0]) <= 120]
-        val_images = [img for img in all_image_names if 121 <= int(img.split('_')[0]) <= 161]
-        test_images = [img for img in all_image_names if 162 <= int(img.split('_')[0]) <= 201]
-        print('$Dataframes$: Adding unlabelled images...')
-        train_dataframe = add_unlabelled_imgs(train_images, train_dataframe)
-        val_dataframe = add_unlabelled_imgs(val_images, val_dataframe)
-        test_dataframe = add_unlabelled_imgs(test_images, test_dataframe)
-
-        # Generate 5 frame sequences and update format to include paths to images
-        print('$Dataframes$: Updating dataframes...')
-        train_dataframe = get_frame_sequence_dataframe3imgs(train_dataframe, train_dir)
-        val_dataframe = get_frame_sequence_dataframe3imgs(val_dataframe, val_dir)
-        test_dataframe = get_frame_sequence_dataframe3imgs(test_dataframe, test_dir)
-        return train_dataframe, val_dataframe, test_dataframe
-
-    updated_train_dataframe = update_dataframe(train_dataframe, train_dir)
-    updated_val_dataframe = update_dataframe(val_dataframe, val_dir)
-    updated_test_dataframe = update_dataframe(test_dataframe, test_dir)
-
-    return updated_train_dataframe, updated_val_dataframe, updated_test_dataframe
 
 
 def generate_path(row, image_folder):
