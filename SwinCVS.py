@@ -17,8 +17,9 @@ from torchvision import transforms
 from scripts.f_environment import get_config, set_deterministic_behaviour
 from scripts.f_dataset import get_datasets, get_dataloaders
 from scripts.build import build_model
-from scripts.f_training_utils import build_optimizer, find_seed_in_weight, update_params, NativeScalerWithGradNormCount
+from scripts.f_training_utils import build_optimizer, update_params, NativeScalerWithGradNormCount
 from scripts.f_metrics import get_map, get_balanced_accuracies
+from scripts.f_training import save_weights
 warnings.filterwarnings("ignore")
 
 ##############################################################################################
@@ -173,6 +174,7 @@ if not config.MODEL.INFERENCE:
                         'train_loss': train_loss, 'val_loss': val_loss}
         results_dict[f"Epoch {epoch+1}"] = epoch_results
 
+        # Save results
         with open(pwd / 'results' / f'{experiment_name}_results.json', 'w') as file:
             json.dump(results_dict, file, indent=4)
 
@@ -185,13 +187,9 @@ if not config.MODEL.INFERENCE:
         
         # Save weights of the best epoch
         if config.TRAIN.SAVE_WEIGHTS:
-            if mAP >= best_MAP:
-                print('New best result, saving weights...')
-                best_MAP = mAP
-                checkpoint_dir = os.path.join(checkpoint_path, f'{experiment_name}_bestMAP.pt')
-                torch.save(model.state_dict(), checkpoint_dir)
-            else:
-                print('\n')
+            save_weights(model, config, experiment_name, mAP, best_MAP, epoch)
+
+
 
 ######
 # ADD CHOOSING AND LOADING BEST EPOCH FROM TRAINIG IF NOT INFERENCE

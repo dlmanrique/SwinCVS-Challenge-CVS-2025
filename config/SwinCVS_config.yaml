@@ -1,4 +1,5 @@
 # GENERAL PARAMS
+EXPERIMENT_NAME: null # Overrides automatic experiment naming 
 SEED: 2
 DATASET_DIR: '/home/franek/SurgLatentGraph/data/mmdet_datasets/endoscapes'
 # DATA PARAMS
@@ -12,11 +13,11 @@ MODEL:
     HIDDEN_SIZE: 256
   E2E: True # Decides if backbone is frozen in training
   MULTICLASSIFIER: True # Classifier WILL NOT be implemented if E2E=False
-  INFERENCE: True
+  INFERENCE: False
   INFERENCE_WEIGHTS: 'SwinV2LSTM_e2e_raw_mc_V3_sd5_bestMAP.pt'
 # TRAINING PARAMS
 TRAIN:
-  EPOCHS: 1
+  EPOCHS: 2
   LIMIT_DATA_FRACTION: 50 # For testing, regular set to 1
   TRANSFORMS:
     ENDOSCAPES_MEAN: [0.485, 0.456, 0.406]
@@ -36,7 +37,8 @@ TRAIN:
   BASE_LR: 0.001
   MIN_LR: 0.0000001
   MULTICLASSIFIER_ALPHA: 0.8
-  SAVE_WEIGHTS: False
+  SAVE_WEIGHTS: True
+  CHECKPOINT_PATH: '/home/franek/SwinCVS/weights'
   LR_SCHEDULER:
     NAME: 'cosine'
     WARMUP_PREFIX: False
