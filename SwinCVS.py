@@ -14,11 +14,11 @@ import torch.nn as nn
 from torchvision import transforms
 
 # Local imports
-from scripts.functions import *
 from scripts.f_environment import get_config, set_deterministic_behaviour
 from scripts.f_dataset import get_datasets, get_dataloaders
 from scripts.build import build_model
-
+from scripts.f_training_utils import build_optimizer, find_seed_in_weight, update_params, NativeScalerWithGradNormCount
+from scripts.f_metrics import get_map, get_balanced_accuracies
 warnings.filterwarnings("ignore")
 
 ##############################################################################################
@@ -61,7 +61,7 @@ torch.cuda.empty_cache()
 ##############################################################################################
 optimizer = build_optimizer(config, model)
 loss_scaler = NativeScalerWithGradNormCount()
-class_weights = torch.tensor([3.19852941, 4.46153846, 2.79518072]).to('cuda')
+class_weights = torch.tensor(config.TRAIN.CLASS_WEIGHTS).to('cuda')
 criterion = nn.BCEWithLogitsLoss(weight=class_weights).to('cuda')
 
 ##############################################################################################
