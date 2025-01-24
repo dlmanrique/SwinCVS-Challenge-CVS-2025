@@ -16,12 +16,14 @@ from torchvision import transforms
 # Local imports
 from scripts.functions import *
 from scripts.f_environment import get_config, set_deterministic_behaviour
+from scripts.f_dataset import get_datasets, get_dataloaders
 from scripts.build import build_model
 
 warnings.filterwarnings("ignore")
 
 ##############################################################################################
 ##############################################################################################
+# ENVIRONMENT
 pwd = Path.cwd()
 print(f"Current working directory: {pwd}")
 
@@ -35,60 +37,9 @@ set_deterministic_behaviour(seed)
 
 ##############################################################################################
 ##############################################################################################
-# Endoscapes normalisation values
-mean = [123.675/255, 116.28/255, 103.53/255]
-std = [58.395/255, 57.12/255, 57.375/255]
-
-# Change BGR to RGB
-mean = mean[::-1]
-std = std[::-1]
-
-# Get model's image size
-img_size = config.DATA.IMG_SIZE
-
-# Create a transform sequence
-transform_sequence = transforms.Compose([   transforms.CenterCrop(480),
-                                            transforms.Resize((img_size, img_size)),
-                                            transforms.ToTensor(),
-                                            transforms.Normalize(
-                                                mean=torch.tensor(mean),
-                                                std=torch.tensor(std))
-                                        ])
-
-# Load dataset dataframes
-image_folder = pwd.parent / 'SurgLatentGraph/data/mmdet_datasets/endoscapes'
-print(f"\nDataset loaded from: {image_folder}")
-
-train_dataframe, val_dataframe, test_dataframe = get_three_dataframes(image_folder, lstm=config.MODEL.LSTM)
-
-# Dataset
-# If SwinCVS model
-if config.MODEL.LSTM:
-        training_dataset = EndoscapesSwinLSTM_Dataset(train_dataframe[::50], transform_sequence)
-        val_dataset = EndoscapesSwinLSTM_Dataset(val_dataframe[::50], transform_sequence)
-        test_dataset = EndoscapesSwinLSTM_Dataset(test_dataframe[::50], transform_sequence)
-# If just SwinV2 model
-else:
-        training_dataset = Endoscapes_Dataset(train_dataframe[::50], transform_sequence)
-        val_dataset = Endoscapes_Dataset(val_dataframe[::50], transform_sequence)
-        test_dataset = Endoscapes_Dataset(test_dataframe[::50], transform_sequence)
-        
-
-# Dataloaders
-train_dataloader = DataLoader(  training_dataset,
-                                batch_size = 1,
-                                pin_memory = True,
-                                shuffle = True)
-
-val_dataloader = DataLoader(    val_dataset,
-                                batch_size = 1,
-                                shuffle = False,
-                                pin_memory = True)
-
-test_dataloader = DataLoader(   test_dataset,
-                                batch_size = 1,
-                                shuffle = False,
-                                pin_memory = True)
+# DATASET and DATALOADER
+training_dataset, val_dataset, test_dataset = get_datasets(config)
+train_dataloader, val_dataloader, test_dataloader = get_dataloaders(config, training_dataset, val_dataset, test_dataset)
 
 ##############################################################################################
 ##############################################################################################

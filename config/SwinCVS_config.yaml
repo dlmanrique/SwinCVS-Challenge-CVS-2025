@@ -1,6 +1,6 @@
 # GENERAL PARAMS
 SEED: 2
-DATASET_DIR: null
+DATASET_DIR: '/home/franek/SurgLatentGraph/data/mmdet_datasets/endoscapes'
 # DATA PARAMS
 DATA:
   IMG_SIZE: 384
@@ -10,12 +10,19 @@ MODEL:
   LSTM_PARAMS:
     NUM_LAYERS: 2
     HIDDEN_SIZE: 256
-  E2E: False # Decides if backbone is frozen in training
+  E2E: True # Decides if backbone is frozen in training
   MULTICLASSIFIER: True # Classifier WILL NOT be implemented if E2E=False
   INFERENCE: False
-  INFERENCE_WEIGHTS: "SwinV2LSTM_e2e_raw_mc_V3_sd5_bestMAP.pt"
+  INFERENCE_WEIGHTS: 'SwinV2LSTM_e2e_raw_mc_V3_sd5_bestMAP.pt'
 # TRAINING PARAMS
 TRAIN:
+  EPOCHS: 1
+  LIMIT_DATA_FRACTION: 50 # For testing, regular set to 1
+  TRANSFORMS:
+    ENDOSCAPES_MEAN: [0.485, 0.456, 0.406]
+    ENDOSCAPES_STD: [0.229, 0.224, 0.225]
+    CENTER_CROP: 480
+  BATCH_SIZE: 1
   OPTIMIZER:
     NAME: 'adamw'
     EPS: 1.0e-08
@@ -23,7 +30,6 @@ TRAIN:
     WEIGHT_DECAY: 0.02
     ENCODER_LR: 0.00001
     CLASSIFIER_LR: 0.001
-  EPOCHS: 1
   WARMUP_EPOCHS: 4
   WARMUP_LR: 0.001
   BASE_LR: 0.001
