@@ -68,13 +68,6 @@ criterion = nn.BCEWithLogitsLoss(weight=class_weights).to('cuda')
 ##############################################################################################
 # TRAINING #
 # Training variables
-if config.MODEL.INFERENCE:
-    if 'sd' in config.MODEL.INFERENCE_WEIGHTS:
-        inference_seed = find_seed_in_weight(config.MODEL.INFERENCE_WEIGHTS)
-        experiment_name += f"_sd{inference_seed}"
-    experiment_name += '_INFERENCE'
-else:
-    experiment_name += f"_sd{seed}"
 print(f"Experiment name: {experiment_name}\n")
 results_dict = {}
 if not config.MODEL.INFERENCE:

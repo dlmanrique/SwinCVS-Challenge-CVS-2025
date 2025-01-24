@@ -4,6 +4,7 @@ import random
 import numpy as np
 import torch
 import os
+import re
 
 def get_config(config_path):
     """
@@ -71,8 +72,24 @@ def validate_config(config):
                 experiment_name += "_ENDP"
         except:
             print('Backbone weights: None!')
+    
+    if config.MODEL.INFERENCE:
+        if 'sd' in config.MODEL.INFERENCE_WEIGHTS:
+            inference_seed = find_seed_in_weight(config.MODEL.INFERENCE_WEIGHTS)
+            experiment_name += f"_sd{inference_seed}"
+            experiment_name += '_INFERENCE'
+        else:
+            experiment_name += f"_sd{config.SEED}"
+
     return experiment_name
 
+def find_seed_in_weight(weight_name):
+    match = re.search(r'sd(\d+)', weight_name)
+    if match:
+        return match.group(1)
+    else:
+        return False
+    
 def set_deterministic_behaviour(seed):
     # Environment Standardisation
     random.seed(seed)                      # Set random seed
