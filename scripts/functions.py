@@ -36,44 +36,6 @@ def find_seed_in_weight(weight_name):
     else:
         return False
 
-
-def validate_config(config):
-    print(f"\nModel settings:")
-    # Check model setup settings
-    if config.MODEL.LSTM and config.MODEL.E2E and config.MODEL.MULTICLASSIFIER:
-        print("End-to-end SwinCVS: SwinV2 backbone, with LSTM and 'multiclassifier'")
-        experiment_name = 'SwinCVS_E2E_MC'
-    elif config.MODEL.LSTM and config.MODEL.E2E and not config.MODEL.MULTICLASSIFIER:
-        print("End-to-end SwinCVS without multiclassifier")
-        experiment_name = 'SwinCVS_E2E'
-    elif config.MODEL.LSTM and not config.MODEL.E2E:
-        print("Frozen SwinCVS: frozen weights in SwinV2 backbone, with LSTM classifier")
-        experiment_name = 'SwinCVS_frozen'
-    elif not config.MODEL.LSTM:
-        print("SwinV2 model selected (not SwinCVS!)")
-        experiment_name = 'SwinV2_backbone'
-    else:
-        print("Custom model settings detected...")
-        print(f"LSTM={config.MODEL.LSTM} | E2E={config.MODEL.E2E} | MULTICLASSIFIER={config.MODEL.MULTICLASSIFIER}")
-        experiment_name = f"CustomModel"
-    # Check if inference
-    if config.MODEL.INFERENCE:
-        assert config.MODEL.INFERENCE_WEIGHTS is not None, "Model selected for INFERENCE, but no weights were provided!"
-        print("Script set for inference - NOT TRAINING.")
-
-    # Otherwise confirm backbone weights
-    else:
-        try:
-            if 'swinv2_base_patch4' in config.BACKBONE.PRETRAINED:
-                print("Backbone weights: ImageNet")
-                experiment_name += "_IMNP"
-            elif config.BACKBONE.PRETRAINED is not None:
-                print(f"Backbone weights: '{config.BACKBONE.PRETRAINED}'")
-                experiment_name += "_ENDP"
-        except:
-            print('Backbone weights: None!')
-    return experiment_name
-
 def update_params(alpha, beta, epoch):
     if epoch <= 4:
         pass
@@ -82,25 +44,6 @@ def update_params(alpha, beta, epoch):
         beta += 0.04
         print(f"New alpha/beta = {alpha, beta} @ epoch {epoch+1}")
     return alpha, beta
-
-def read_config(config_file):
-    """
-    Read Yaml file into dict
-    """
-    with open(config_file, 'r') as f:
-        config = yaml.load(f, Loader=yaml.FullLoader)
-    return config
-
-def config_to_yacs(dict_config):
-    """
-    Convert the dict to a yacs CfgNode.
-    """
-    if not isinstance(dict_config, dict):
-        return dict_config  # Return non-dict values as is
-    cfg = CN()
-    for key, value in dict_config.items():
-        cfg[key] = config_to_yacs(value)  # Recursively convert nested dictionaries
-    return cfg
 
 def build_scheduler(config, optimizer, n_iter_per_epoch):
     num_steps = int(config.TRAIN.EPOCHS * n_iter_per_epoch)

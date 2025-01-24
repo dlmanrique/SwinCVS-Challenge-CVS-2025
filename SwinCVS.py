@@ -2,9 +2,7 @@ print('Importing libraries...')
 # Standard library imports
 import os
 import time
-import random
 import json
-from copy import copy, deepcopy
 from pathlib import Path
 import warnings 
 
@@ -14,37 +12,26 @@ import numpy as np
 from torch.utils.data import DataLoader
 import torch.nn as nn
 from torchvision import transforms
-from timm.data.auto_augment import auto_augment_transform
 
 # Local imports
 from scripts.functions import *
-
-# IMPORTS FROM MSFT GITHUB
+from scripts.f_environment import get_config, set_deterministic_behaviour
 from scripts.build import build_model
 
 warnings.filterwarnings("ignore")
 
 ##############################################################################################
 ##############################################################################################
-# Get path to current directory
 pwd = Path.cwd()
 print(f"Current working directory: {pwd}")
 
 # Load config
-cfg = 'config/SwinCVS_config.yaml'
-config_dict = read_config(cfg)
-config = config_to_yacs(config_dict)
-experiment_name = validate_config(config)
+config_path = 'config/SwinCVS_config.yaml'
+config, experiment_name = get_config(config_path)
 
 seed = config.SEED
-# Environment Standardisation
-random.seed(seed)                      # Set random seed
-np.random.seed(seed)                   # Set NumPy seed
-torch.manual_seed(seed)                # Set PyTorch seed
-torch.cuda.manual_seed(seed)           # Set CUDA seed
-torch.backends.cudnn.benchmark = False # Disable dynamic tuning
-torch.use_deterministic_algorithms(True) # Force deterministic behavior
-os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # CUDA workspace config
+set_deterministic_behaviour(seed)
+
 
 ##############################################################################################
 ##############################################################################################
