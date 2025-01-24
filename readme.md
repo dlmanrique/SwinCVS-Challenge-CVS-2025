@@ -1,8 +1,7 @@
 # SwinCVS: A Unified Approach to Classifying Critical View of Safety Structures in Laparoscopic Cholecystectomy
 
 **Authors**:  
-Franciszek Nowak, Evangelos B. Mazomenos,  
-Brian Davidson, Matthew Clarkson  
+Franciszek Nowak, Evangelos B. Mazomenos, Brian Davidson, Matthew J. Clarkson  
 
 --- 
 
