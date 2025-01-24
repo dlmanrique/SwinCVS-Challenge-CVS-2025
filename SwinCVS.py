@@ -1,40 +1,26 @@
 print('Importing libraries...')
 # Standard library imports
 import os
-import shutil
 import time
 import random
 import json
 from copy import copy, deepcopy
 from pathlib import Path
-from typing import Tuple, Dict
 import warnings 
 
 # Third-party imports
 import torch
-import torchvision
-import timm
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from PIL import Image
-from sklearn.metrics import precision_recall_curve, average_precision_score
-from torch.utils.data import Sampler, Dataset, DataLoader
+from torch.utils.data import DataLoader
 import torch.nn as nn
-import torch.optim as optim
 from torchvision import transforms
-from torchvision.transforms import RandAugment
-from torch.nn import Linear
 from timm.data.auto_augment import auto_augment_transform
 
 # Local imports
 from scripts.functions import *
 
 # IMPORTS FROM MSFT GITHUB
-import yaml
-from argparse import Namespace
-from scripts.build import build_model, SwinLSTMModel
-from types import SimpleNamespace
+from scripts.build import build_model
 
 warnings.filterwarnings("ignore")
 
