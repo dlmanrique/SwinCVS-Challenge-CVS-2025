@@ -1,6 +1,5 @@
 print('Importing libraries...')
 # Standard library imports
-import os
 import time
 import json
 from pathlib import Path
@@ -9,9 +8,7 @@ import warnings
 # Third-party imports
 import torch
 import numpy as np
-from torch.utils.data import DataLoader
 import torch.nn as nn
-from torchvision import transforms
 
 # Local imports
 from scripts.f_environment import get_config, set_deterministic_behaviour
@@ -96,7 +93,7 @@ if not config.MODEL.INFERENCE:
 
         model.train()
         optimizer.zero_grad()
-        
+
         print("Training")
         start_time = time.time()
         for idx, (samples, targets) in enumerate(train_dataloader):

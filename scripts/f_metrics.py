@@ -1,21 +1,9 @@
 # Standard library imports
-import os
-import shutil
-import random
-import json
-from copy import copy, deepcopy
-from pathlib import Path
-from typing import Tuple, Dict
-import multiprocessing as mp
+from copy import deepcopy
 
 # Third-party imports
-import torch
-import torchvision
-import timm
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.metrics import precision_recall_curve, average_precision_score
+from sklearn.metrics import average_precision_score
 
 
 
