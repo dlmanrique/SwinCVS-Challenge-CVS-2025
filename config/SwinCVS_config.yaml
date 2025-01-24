@@ -6,11 +6,11 @@ DATA:
   IMG_SIZE: 384
 # SWINCVS MODEL PARAMS
 MODEL:
-  LSTM: True
+  LSTM: False
   LSTM_PARAMS:
     NUM_LAYERS: 2
     HIDDEN_SIZE: 256
-  E2E: True # Decides if backbone is frozen in training
+  E2E: False # Decides if backbone is frozen in training
   MULTICLASSIFIER: True # Classifier WILL NOT be implemented if E2E=False
   INFERENCE: False
   INFERENCE_WEIGHTS: 'SwinV2LSTM_e2e_raw_mc_V3_sd5_bestMAP.pt'

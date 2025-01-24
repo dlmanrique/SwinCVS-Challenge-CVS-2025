@@ -21,9 +21,9 @@ def get_datasets(config):
 
     # If SwinCVS model
     if config.MODEL.LSTM:
-            training_dataset = EndoscapesSwinLSTM_Dataset(train_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
-            val_dataset = EndoscapesSwinLSTM_Dataset(val_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
-            test_dataset = EndoscapesSwinLSTM_Dataset(test_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
+            training_dataset = EndoscapesSwinCVS_Dataset(train_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
+            val_dataset = EndoscapesSwinCVS_Dataset(val_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
+            test_dataset = EndoscapesSwinCVS_Dataset(test_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
     # If just SwinV2 backbone
     else:
             training_dataset = Endoscapes_Dataset(train_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
@@ -33,6 +33,9 @@ def get_datasets(config):
     return training_dataset, val_dataset, test_dataset
 
 def get_dataloaders(config, training_dataset, val_dataset, test_dataset):
+    """
+    Create dataloaders from a given training datasets
+    """
     train_dataloader = DataLoader(  training_dataset,
                                     batch_size = config.TRAIN.BATCH_SIZE,
                                     pin_memory = True,
@@ -67,7 +70,6 @@ def get_three_dataframes(image_folder, lstm = False):
     train_dataframe = get_dataframe(train_dir / train_file)
     val_dataframe = get_dataframe(val_dir / val_file)
     test_dataframe = get_dataframe(test_dir / test_file)
-
     if lstm:
         # Add unlabelled images to the dataframe
         with open(image_folder / 'all' / 'annotation_coco.json', 'r') as file:
@@ -83,21 +85,22 @@ def get_three_dataframes(image_folder, lstm = False):
         train_dataframe = add_unlabelled_imgs(train_images, train_dataframe)
         val_dataframe = add_unlabelled_imgs(val_images, val_dataframe)
         test_dataframe = add_unlabelled_imgs(test_images, test_dataframe)
-
+   
         # Generate 5 frame sequences and update format to include paths to images
         train_dataframe = get_frame_sequence_dataframe(train_dataframe, train_dir)
         val_dataframe = get_frame_sequence_dataframe(val_dataframe, val_dir)
         test_dataframe = get_frame_sequence_dataframe(test_dataframe, test_dir)
-
         return train_dataframe, val_dataframe, test_dataframe
 
     updated_train_dataframe = update_dataframe(train_dataframe, train_dir)
     updated_val_dataframe = update_dataframe(val_dataframe, val_dir)
     updated_test_dataframe = update_dataframe(test_dataframe, test_dir)
-
     return updated_train_dataframe, updated_val_dataframe, updated_test_dataframe
 
 class Endoscapes_Dataset(Dataset):
+    """
+    Dataset creator only for backbone - SwinV2 training.
+    """
     def __init__(self, image_dataframe, transform_sequence):
         self.image_dataframe = image_dataframe
         self.transforms = transform_sequence
@@ -118,7 +121,10 @@ class Endoscapes_Dataset(Dataset):
       
         return image, label
     
-class EndoscapesSwinLSTM_Dataset(Dataset):
+class EndoscapesSwinCVS_Dataset(Dataset):
+    """
+    Dataset creator for SwinCVS - includes 5 frame sequences.
+    """
     def __init__(self, image_dataframe, transform_sequence):
         self.image_dataframe = image_dataframe
         self.transforms = transform_sequence
@@ -156,6 +162,10 @@ class EndoscapesSwinLSTM_Dataset(Dataset):
         return images, label
 
 def get_dataframe(json_path):
+    """
+    Get dataframes of the dataset splits in columns:
+    idx | vid | frame | C1 | C2 | C3
+    """
     with open(json_path, 'r') as file:
         data = json.load(file)
     vid = []
@@ -191,6 +201,13 @@ def get_dataframe(json_path):
     return data_dataframe
 
 def get_frame_sequence_dataframe(dataframe, image_folder):
+    """
+    For LSTM dataframe creator. Using dataframes updated with unlabelled images, get five frame sequences. The returned dataframe has columns:
+    idx | f0 | f1 | f2 | f3 | f4 | classification
+    idx - index of the sequence
+    f0-4 - path to each image in the sequence
+    classification - list of ground truth values for C1-3 as, [C1, C2, C3] e.g. [0.0, 0.0, 1.0] 
+    """
     new_dataframe_rows = []
     # Iterate over each video so as not to create intravid sequences
     for video in dataframe['vid'].unique():
@@ -218,6 +235,13 @@ def get_frame_sequence_dataframe(dataframe, image_folder):
     return updated_dataframe
 
 def update_dataframe(dataframe, image_folder):
+    """
+    Function only for creation of dataframes when training backbone - SwinV2. It changes the structure of the dataframe from:
+    idx | vid | frame | C1 | C2 | C3
+    to:
+    idx | path | classification
+    where path is a path to a given image and classification is a list of ground truth values for C1-3 as, [C1, C2, C3] e.g. [0.0, 0.0, 1.0] 
+    """
     dataframe['path'] = dataframe.apply(lambda row: generate_path(row, image_folder), axis=1)
     dataframe['classification'] = dataframe.apply(lambda row: get_class(row), axis=1)
     dataframe.drop(columns=['vid', 'frame', 'C1', 'C2', 'C3'], inplace=True)
@@ -225,6 +249,11 @@ def update_dataframe(dataframe, image_folder):
     return dataframe
 
 def add_unlabelled_imgs(list_of_selected_images, selected_dataframe):
+    """
+    Given existing splits dataframes, in correct otder, append images that are unlabelled. Output dataframe has columns:
+    idx | vid | frame | C1 | C2 | C3
+    where C1-3 is unlabelled it has a value '-1.0'
+    """
     rows = []
     for image in list_of_selected_images:
         contents = image.split('.')[0].split('_')
