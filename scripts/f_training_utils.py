@@ -4,13 +4,6 @@ from timm.scheduler.cosine_lr import CosineLRScheduler
 from math import inf
 import torch.optim as optim
 
-def find_seed_in_weight(weight_name):
-    match = re.search(r'sd(\d+)', weight_name)
-    if match:
-        return match.group(1)
-    else:
-        return False
-
 def update_params(alpha, beta, epoch):
     if epoch <= 4:
         pass
