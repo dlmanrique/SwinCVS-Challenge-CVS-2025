@@ -79,22 +79,26 @@ if not config.MODEL.INFERENCE:
     end_time = 0
     time_list = []
 
-    multiclasifier_alpha = config.TRAIN.MULTICLASSIFIER_ALPHA
-    multiclasifier_beta = 1-multiclasifier_alpha
+    if config.MODEL.MULTICLASSIFIER:
+        multiclasifier_alpha = config.TRAIN.MULTICLASSIFIER_ALPHA
+        multiclasifier_beta = 1-multiclasifier_alpha
 
     print("Beginning training...")
     for epoch in range(num_epochs):
         print(f"Epoch: {epoch+1:02}/{num_epochs:02}")
-        multiclasifier_alpha, multiclasifier_beta = update_params(multiclasifier_alpha, multiclasifier_beta, epoch)
+
+        # Update weight scaling parameters if 
+        if config.MODEL.E2E and config.MODEL.MULTICLASSIFIER:
+            multiclasifier_alpha, multiclasifier_beta = update_params(multiclasifier_alpha, multiclasifier_beta, epoch)
         
-        start_time = time.time()
-        
-        # Training Epochs
         train_loss = 0.0
         val_loss = 0.0
+
         model.train()
         optimizer.zero_grad()
+        
         print("Training")
+        start_time = time.time()
         for idx, (samples, targets) in enumerate(train_dataloader):
             print(f"Processing batch: {idx+1:04}/{len(train_dataloader):04}", end="\r")
 
@@ -110,7 +114,8 @@ if not config.MODEL.INFERENCE:
             if config.MODEL.E2E and config.MODEL.MULTICLASSIFIER:
                 loss_train = multiclasifier_alpha*criterion(outputs_swin, targets) + multiclasifier_beta*criterion(outputs_lstm, targets)
             else:
-                loss_train = criterion(outputs_lstm, targets) 
+                loss_train = criterion(outputs_lstm, targets)
+
             is_second_order = hasattr(optimizer, 'is_second_order') and optimizer.is_second_order
             grad_norm = loss_scaler(loss_train, optimizer, clip_grad=config.TRAIN.CLIP_GRAD,
                                     parameters=model.parameters(), create_graph=is_second_order,
