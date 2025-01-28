@@ -5,17 +5,21 @@ from PIL import Image
 import random
 import json
 import pandas as pd
+import shutil
+from tqdm import tqdm
+import requests
+import zipfile
 from torchvision import transforms
 from pathlib import Path
 
 def get_datasets(config):
     """
-    Create dataset instances and apply transformations specified in config
+    Check dataset exists (download if not). Create dataset instances and apply transformations specified in config
     """
-    image_folder = Path(config.DATASET_DIR)
-    print(f"\nDataset loaded from: {image_folder}")
+    dataset_dir = check_dataset(config)
+    print(f"\nDataset loaded from: {dataset_dir}")
 
-    train_dataframe, val_dataframe, test_dataframe = get_three_dataframes(image_folder, lstm=config.MODEL.LSTM)
+    train_dataframe, val_dataframe, test_dataframe = get_three_dataframes(dataset_dir, lstm=config.MODEL.LSTM)
 
     transform_sequence = get_transform_sequence(config)
 
@@ -31,6 +35,92 @@ def get_datasets(config):
             test_dataset = Endoscapes_Dataset(test_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
 
     return training_dataset, val_dataset, test_dataset
+
+def check_dataset(config):
+    """
+    Checks whether specified folder contains valid endoscapes dataset. Redownloads if checksum failed, or folder missing.
+    Requires config.DATASET_DIR to lead to the folder containing 'endoscapes' or null - will download to repo dir. 
+    """
+    dataset_path = config.DATASET_DIR
+
+    # If dataset is meant to be downloaded into cwd
+    if dataset_path == None:
+        dataset_path = Path.cwd()
+
+    # Add 'endoscapes' subfolder
+    dataset_dir = Path(dataset_path) / 'endoscapes'
+
+    # Checksum of the number of expected files
+    all_imgs_dir = dataset_dir / 'all'
+    if all_imgs_dir.exists() and all_imgs_dir.is_dir():
+        file_count = sum(1 for f in all_imgs_dir.iterdir() if f.is_file())
+        if file_count != 58586:
+            response = input(f"Dataset checksum failed. Attempting to remove the '{dataset_dir}' and redownload Endoscapes dataset. Proceed? (Y/N): ").strip().upper()
+            while response not in ['Y', 'N']:
+                input(f"Please answer with Y/N only")
+            if response == 'Y':
+                print('Removing pre-existing dataset...')
+                shutil.rmtree(dataset_dir)
+                download_and_unzip_dataset(dataset_dir.parent)
+            if response == 'N':
+                print("Continuing with the originally specified dataset...")
+    else:
+        print('Dataset folder not found. Redownloading dataset...')
+        if dataset_dir.exists() and dataset_dir.is_dir():
+            shutil.rmtree(dataset_dir)
+        download_and_unzip_dataset(dataset_dir.parent)
+    return dataset_dir
+
+def download_and_unzip_dataset(destination_folder,url="https://s3.unistra.fr/camma_public/datasets/endoscapes/endoscapes.zip"):
+    """
+    Downloads and unzips a dataset from a specified URL to the given destination folder.
+
+    :param destination_folder: The local folder to save and extract the dataset.
+    :param url: The URL of the dataset to download.
+    """
+    # Ensure the destination folder exists
+    destination_folder = Path(destination_folder)
+    destination_folder.mkdir(parents=True, exist_ok=True)
+
+    # Define the local file path for the downloaded zip file
+    zip_file_path = destination_folder / "endoscapes.zip"
+
+    try:
+        # Step 1: Download the dataset
+        print(f"Downloading dataset from {url}...")
+        response = requests.get(url, stream=True)
+        response.raise_for_status()  # Raise an error for bad status codes
+
+        # Get the total file size from the headers (if available)
+        total_size = int(response.headers.get('content-length', 0))
+
+        # Download with a progress bar
+        with open(zip_file_path, "wb") as file, tqdm(
+            desc="Downloading",
+            total=total_size,
+            unit="B",
+            unit_scale=True,
+            unit_divisor=1024,
+        ) as progress:
+            for chunk in response.iter_content(chunk_size=8192):
+                file.write(chunk)
+                progress.update(len(chunk))
+
+        # Step 2: Unzip the dataset
+        print(f"Extracting dataset to {destination_folder}...")
+        with zipfile.ZipFile(zip_file_path, "r") as zip_ref:
+            zip_ref.extractall(destination_folder)
+        print("Dataset extracted successfully.")
+
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred during download: {e}")
+    except zipfile.BadZipFile:
+        print("The downloaded file is not a valid zip file.")
+    finally:
+        # Clean up: Remove the zip file after extraction
+        if zip_file_path.exists():
+            zip_file_path.unlink()
+            print(f"Cleaned up temporary zip file: {zip_file_path}")
 
 def get_dataloaders(config, training_dataset, val_dataset, test_dataset):
     """

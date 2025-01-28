@@ -1,5 +1,6 @@
 /weights
 /results
+/endoscapes
 scripts/__pycache__
 SwinLSTMend2endraw_inference.qsub.sh
 testins.ipynb
