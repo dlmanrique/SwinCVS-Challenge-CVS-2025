@@ -13,7 +13,7 @@ import torch.nn as nn
 # Local imports
 from scripts.f_environment import get_config, set_deterministic_behaviour, verify_results_weights_folder
 from scripts.f_dataset import get_datasets, get_dataloaders
-from scripts.build import build_model
+from scripts.f_build import build_model
 from scripts.f_training_utils import build_optimizer, update_params, NativeScalerWithGradNormCount
 from scripts.f_metrics import get_map, get_balanced_accuracies
 from scripts.f_training import save_weights
