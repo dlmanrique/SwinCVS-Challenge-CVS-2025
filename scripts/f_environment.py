@@ -11,10 +11,16 @@ import zipfile
 from pathlib import Path
 
 def verify_results_weights_folder(pwd):
+    """
+    Checks whether necessary folders 'results' and 'weights' exist. If not, make them. Also checks if the necessary weights exist. If they don't they are downloaded. 
+    """
+    # Check whether essential folders exist
     results_dir = pwd / 'results'
     weights_dir = pwd / 'weights'
     results_dir.mkdir(parents=True, exist_ok=True)
     weights_dir.mkdir(parents=True, exist_ok=True)
+
+    # Check whether necessary weights exist. If not download.
     weights = [str(item) for item in weights_dir.iterdir()]
     required_weights = ["Swin_backbone_no_augm_sd4_bestMAP.pt",
                         "swinv2_base_patch4_window12to24_192to384_22kto1k_ft.pth",
@@ -25,6 +31,9 @@ def verify_results_weights_folder(pwd):
         download_extract_zip(weights_dir, weights_url)
         
 def download_extract_zip(download_path, url):
+    """
+    Downloads and extracts zip file from a given url to a specified folder.
+    """
     # Double check the download path exists
     download_path = Path(download_path)
     download_path.mkdir(parents=True, exist_ok=True)
@@ -32,7 +41,7 @@ def download_extract_zip(download_path, url):
     zip_file_path = download_path / "temp.zip"
 
     try:
-        # Step 1: Download the dataset
+        # Step 1: Download file
         print(f"Downloading zip from {url}...")
         response = requests.get(url, stream=True)
         response.raise_for_status()  # Raise an error for bad status codes
@@ -52,7 +61,7 @@ def download_extract_zip(download_path, url):
                 file.write(chunk)
                 progress.update(len(chunk))
 
-        # Step 2: Unzip the dataset
+        # Step 2: Unzip file
         print(f"Extracting zip to {download_path}...")
         with zipfile.ZipFile(zip_file_path, "r") as zip_ref:
             zip_ref.extractall(download_path)
