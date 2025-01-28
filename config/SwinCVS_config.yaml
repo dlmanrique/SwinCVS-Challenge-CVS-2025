@@ -2,7 +2,6 @@
 EXPERIMENT_NAME: null # Overrides automatic experiment naming 
 SEED: 2
 DATASET_DIR: null # Folder that contains 'endoscapes' dataset folder, or null to install in repo directory
-DOWNLOAD_WEIGHTS: True
 # DATA PARAMS
 DATA:
   IMG_SIZE: 384
