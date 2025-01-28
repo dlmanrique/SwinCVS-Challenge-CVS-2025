@@ -11,7 +11,7 @@ import numpy as np
 import torch.nn as nn
 
 # Local imports
-from scripts.f_environment import get_config, set_deterministic_behaviour
+from scripts.f_environment import get_config, set_deterministic_behaviour, verify_results_weights_folder
 from scripts.f_dataset import get_datasets, get_dataloaders
 from scripts.build import build_model
 from scripts.f_training_utils import build_optimizer, update_params, NativeScalerWithGradNormCount
@@ -24,6 +24,9 @@ warnings.filterwarnings("ignore")
 # ENVIRONMENT
 pwd = Path.cwd()
 print(f"Current working directory: {pwd}")
+
+# Verify necessary folder structure and download weights
+verify_results_weights_folder(pwd)
 
 # Load config
 config_path = 'config/SwinCVS_config.yaml'

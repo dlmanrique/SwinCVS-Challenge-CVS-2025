@@ -6,11 +6,10 @@ import random
 import json
 import pandas as pd
 import shutil
-from tqdm import tqdm
-import requests
-import zipfile
+
 from torchvision import transforms
 from pathlib import Path
+from scripts.f_environment import download_extract_zip
 
 def get_datasets(config):
     """
@@ -61,66 +60,16 @@ def check_dataset(config):
             if response == 'Y':
                 print('Removing pre-existing dataset...')
                 shutil.rmtree(dataset_dir)
-                download_and_unzip_dataset(dataset_dir.parent)
+                print('Re-downloading dataset')
+                download_extract_zip(dataset_dir.parent, 'https://s3.unistra.fr/camma_public/datasets/endoscapes/endoscapes.zip')
             if response == 'N':
                 print("Continuing with the originally specified dataset...")
     else:
-        print('Dataset folder not found. Redownloading dataset...')
+        print('Dataset folder not found. Downloading dataset...')
         if dataset_dir.exists() and dataset_dir.is_dir():
             shutil.rmtree(dataset_dir)
-        download_and_unzip_dataset(dataset_dir.parent)
+        download_extract_zip(dataset_dir.parent, 'https://s3.unistra.fr/camma_public/datasets/endoscapes/endoscapes.zip')
     return dataset_dir
-
-def download_and_unzip_dataset(destination_folder,url="https://s3.unistra.fr/camma_public/datasets/endoscapes/endoscapes.zip"):
-    """
-    Downloads and unzips a dataset from a specified URL to the given destination folder.
-
-    :param destination_folder: The local folder to save and extract the dataset.
-    :param url: The URL of the dataset to download.
-    """
-    # Ensure the destination folder exists
-    destination_folder = Path(destination_folder)
-    destination_folder.mkdir(parents=True, exist_ok=True)
-
-    # Define the local file path for the downloaded zip file
-    zip_file_path = destination_folder / "endoscapes.zip"
-
-    try:
-        # Step 1: Download the dataset
-        print(f"Downloading dataset from {url}...")
-        response = requests.get(url, stream=True)
-        response.raise_for_status()  # Raise an error for bad status codes
-
-        # Get the total file size from the headers (if available)
-        total_size = int(response.headers.get('content-length', 0))
-
-        # Download with a progress bar
-        with open(zip_file_path, "wb") as file, tqdm(
-            desc="Downloading",
-            total=total_size,
-            unit="B",
-            unit_scale=True,
-            unit_divisor=1024,
-        ) as progress:
-            for chunk in response.iter_content(chunk_size=8192):
-                file.write(chunk)
-                progress.update(len(chunk))
-
-        # Step 2: Unzip the dataset
-        print(f"Extracting dataset to {destination_folder}...")
-        with zipfile.ZipFile(zip_file_path, "r") as zip_ref:
-            zip_ref.extractall(destination_folder)
-        print("Dataset extracted successfully.")
-
-    except requests.exceptions.RequestException as e:
-        print(f"An error occurred during download: {e}")
-    except zipfile.BadZipFile:
-        print("The downloaded file is not a valid zip file.")
-    finally:
-        # Clean up: Remove the zip file after extraction
-        if zip_file_path.exists():
-            zip_file_path.unlink()
-            print(f"Cleaned up temporary zip file: {zip_file_path}")
 
 def get_dataloaders(config, training_dataset, val_dataset, test_dataset):
     """
