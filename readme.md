@@ -19,7 +19,14 @@ Welcome. This repository provides code necessary for reproduction of the SwinCVS
 ## Installation
 
 - Clone this repository
-- Install dependencies from requirements.txt
+- Confirm you have cuda enabled. In console type nvidia-smi. Our driver API details are:
+NVIDIA-SMI 550.120 | Driver Version: 550.120 | CUDA Version: 12.4
+- Install runtime API cuda 12.1 - Remember to add to path!
+- Install dependencies:<br>
+conda create --name swincvs python=3.9.19<br>
+conda activate swincvs<br>
+conda install pytorch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 pytorch-cuda=12.1 -c pytorch -c nvidia<br>
+pip install -r requirements.txt<br>
 
 ## Usage
 
@@ -28,14 +35,14 @@ Script is run by executing SwinCVS.py from the root of the repository. Specific 
 - MODEL.E2E: False - backbone weights frozen, True - End-to-end training
 - MODEL.MULTICLASSIFIER: False - does not add an additional classifier after backbone, True - adds a classifier after backbone, before SLTM 
 - MODEL.INFERENCE: False - allows for training, True - skips all training, performs only testing on provided weihts
-- BACKBONE.PRETRAINED: 'str' - which backbone weights to load, imagenet or endoscapes
+- BACKBONE.PRETRAINED: 'str' - which backbone weights to load, imagenet or endoscapes<br>
 
-## Code Release
+The script automatically downloads the dataset and the weights. If you already have dataset downloaded please specify directory that containst 'endoscapes' folder with all the dataset data.<br>
 
-**Note**: The code for this project will be released soon following the publication of our paper. Stay tuned for updates!
+After changing the config execute the script by simply running:<br>
+python3 SwinCVS.py
 
 ## Citation
 
 If you use this work in your research, please cite our paper:
 (details soon)
-
