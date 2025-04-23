@@ -34,10 +34,10 @@ Script is run by executing SwinCVS.py from the root of the repository. Specific 
 - MODEL.LSTM: False - just SwinV2 backbone training, True - SwinCVS = SwinV2 with LSTM
 - MODEL.E2E: False - backbone weights frozen, True - End-to-end training
 - MODEL.MULTICLASSIFIER: False - does not add an additional classifier after backbone, True - adds a classifier after backbone, before LSTM 
-- MODEL.INFERENCE: False - allows for training, True - skips all training, performs only testing on provided weihts
+- MODEL.INFERENCE: False - allows for training, True - skips all training, performs only testing on provided weights
 - BACKBONE.PRETRAINED: 'str' - which backbone weights to load, imagenet or endoscapes<br>
 
-The script automatically downloads the dataset and the weights. If you already have dataset downloaded please specify directory that containst 'endoscapes' folder with all the dataset data.<br>
+The script automatically downloads the dataset and the weights. If you already have dataset downloaded please specify directory that contains 'endoscapes' folder with all the dataset data.<br>
 
 After changing the config execute the script by simply running:<br>
 python3 SwinCVS.py
