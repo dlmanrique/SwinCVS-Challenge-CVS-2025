@@ -33,7 +33,7 @@ pip install -r requirements.txt<br>
 Script is run by executing SwinCVS.py from the root of the repository. Specific model training parameters are set within config/SwinCVS_config.yaml. Settings that specify model selection are:
 - MODEL.LSTM: False - just SwinV2 backbone training, True - SwinCVS = SwinV2 with LSTM
 - MODEL.E2E: False - backbone weights frozen, True - End-to-end training
-- MODEL.MULTICLASSIFIER: False - does not add an additional classifier after backbone, True - adds a classifier after backbone, before SLTM 
+- MODEL.MULTICLASSIFIER: False - does not add an additional classifier after backbone, True - adds a classifier after backbone, before LSTM 
 - MODEL.INFERENCE: False - allows for training, True - skips all training, performs only testing on provided weihts
 - BACKBONE.PRETRAINED: 'str' - which backbone weights to load, imagenet or endoscapes<br>
 
