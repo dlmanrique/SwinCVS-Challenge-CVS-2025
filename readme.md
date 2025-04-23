@@ -45,4 +45,4 @@ python3 SwinCVS.py
 ## Citation
 
 If you use this work in your research, please cite our paper:
-(details soon)
+Nowak, F., Mazomenos, E., Davidson, B., Clarkson, M., SwinCVS: A Unified Approach to Classifying Critical View of Safety Structures in Laparoscopic Cholecystectomy. Int J CARS (2025). https://doi.org/10.1007/s11548-025-03354-9
