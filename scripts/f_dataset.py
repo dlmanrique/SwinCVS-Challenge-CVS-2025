@@ -81,7 +81,7 @@ def get_dataloaders(config, training_dataset, val_dataset, test_dataset):
                                     shuffle = True)
 
     val_dataloader = DataLoader(    val_dataset,
-                                    batch_size = config.TRAIN.BATCH_SIZE,
+                                    batch_size = 1,
                                     shuffle = False,
                                     pin_memory = True)
 

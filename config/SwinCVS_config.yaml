@@ -1,6 +1,6 @@
 # GENERAL PARAMS
 EXPERIMENT_NAME: null # Overrides automatic experiment naming 
-SEED: 2
+SEED: 5
 DATASET_DIR: null # Folder that contains 'endoscapes' dataset folder, or null to install in repo directory
 # DATA PARAMS
 DATA:
@@ -13,17 +13,17 @@ MODEL:
     HIDDEN_SIZE: 256
   E2E: True # Decides if backbone is frozen in training
   MULTICLASSIFIER: True # Classifier WILL NOT be implemented if E2E=False
-  INFERENCE: False
+  INFERENCE: True
   INFERENCE_WEIGHTS: 'SwinV2LSTM_e2e_raw_mc_V3_sd5_bestMAP.pt'
 # TRAINING PARAMS
 TRAIN:
-  EPOCHS: 2
-  LIMIT_DATA_FRACTION: 50 # For testing, regular set to 1
+  EPOCHS: 8
+  LIMIT_DATA_FRACTION: 1 # Limits how much data is used for constructing the train, val, test datasets. 1 = 100%, 5 = 20% etc.
   TRANSFORMS:
     ENDOSCAPES_MEAN: [0.485, 0.456, 0.406]
     ENDOSCAPES_STD: [0.229, 0.224, 0.225]
     CENTER_CROP: 480
-  BATCH_SIZE: 1
+  BATCH_SIZE: 12
   OPTIMIZER:
     NAME: 'adamw'
     EPS: 1.0e-08
