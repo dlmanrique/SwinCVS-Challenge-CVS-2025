@@ -78,7 +78,7 @@ results_dict = {}
 if not config.MODEL.INFERENCE:
     num_epochs = config.TRAIN.EPOCHS
     checkpoint_path = pwd / 'weights'
-    best_MAP = 0
+    best_mAP = 0
     start_time = 0
     end_time = 0
     time_list = []
@@ -195,8 +195,12 @@ if not config.MODEL.INFERENCE:
         print(f"Estimated remaining time: {np.round(np.mean(time_list)*(num_epochs-(epoch+1)))}s")
         
         # Save weights of the best epoch
-        if config.TRAIN.SAVE_WEIGHTS:
-            save_weights(model, config, experiment_name, mAP, best_MAP, epoch)
+        if mAP >= best_mAP:
+            best_mAP = mAP
+            print(f"New best result (Epoch {epoch+1}), saving weights...")
+            save_weights(model, config, experiment_name)
+        else:
+            print('\n')
 
 
 

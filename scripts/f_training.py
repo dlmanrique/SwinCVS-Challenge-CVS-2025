@@ -2,15 +2,17 @@ import torch
 import os
 from pathlib import Path
 
-def save_weights(model, config, experiment_name, mAP, best_MAP, epoch):
-    if mAP >= best_MAP:
-        print(f"New best result (Epoch {epoch+1}), saving weights...")
-        best_MAP = mAP
-        if config.TRAIN.CHECKPOINT_PATH == None:
-            checkpoint_path = Path.cwd() / 'weights'
-        else:
-            checkpoint_path = config.TRAIN.CHECKPOINT_PATH
-        checkpoint_dir = os.path.join(checkpoint_path, f'{experiment_name}_bestMAP.pt')
-        torch.save(model.state_dict(), checkpoint_dir)
+def save_weights(model, config, experiment_name):
+    """
+    Function saving weights of passed model.
+    """
+    weights_path = Path()
+    if config.TRAIN.CHECKPOINT_PATH == None:
+        weights_path = Path.cwd() / 'weights'
     else:
-        print('\n')
+        weights_path = config.TRAIN.CHECKPOINT_PATH
+    
+    print(f"weights path: {weights_path}")
+
+    checkpoint_dir = os.path.join(weights_path, f'{experiment_name}_bestMAP.pt')
+    torch.save(model.state_dict(), checkpoint_dir)
