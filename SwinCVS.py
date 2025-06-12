@@ -1,5 +1,6 @@
 print('Importing libraries...')
 # Standard library imports
+import argparse
 import time
 import json
 from pathlib import Path
@@ -29,7 +30,10 @@ print(f"Current working directory: {pwd}")
 verify_results_weights_folder(pwd)
 
 # Load config
-config_path = 'config/SwinCVS_config.yaml'
+parser = argparse.ArgumentParser(description="Run SwinCVS with specified config")
+parser.add_argument('--config_path', type=str, required=True, help='Path to config YAML file')
+args = parser.parse_args()
+config_path = args.config_path
 config, experiment_name = get_config(config_path)
 
 seed = config.SEED

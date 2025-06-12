@@ -39,8 +39,8 @@ Script is run by executing SwinCVS.py from the root of the repository. Specific 
 
 The script automatically downloads the dataset and the weights. If you already have dataset downloaded please specify directory that contains 'endoscapes' folder with all the dataset data.<br>
 
-After changing the config execute the script by simply running:<br>
-python3 SwinCVS.py
+After changing the config, execute the script by running the SwinCVS.py and specifying which config file to use (default below):<br>
+python3 SwinCVS.py --config_path config/SwinCVS_config.yaml
 
 ## Citation
 
