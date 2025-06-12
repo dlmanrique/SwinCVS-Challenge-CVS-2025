@@ -68,6 +68,7 @@ def check_dataset(config):
         print('Dataset folder not found. Downloading dataset...')
         if dataset_dir.exists() and dataset_dir.is_dir():
             shutil.rmtree(dataset_dir)
+        print('Dataset downloaded. Unpacking...')
         download_extract_zip(dataset_dir.parent, 'https://s3.unistra.fr/camma_public/datasets/endoscapes/endoscapes.zip')
     return dataset_dir
 
@@ -75,6 +76,7 @@ def get_dataloaders(config, training_dataset, val_dataset, test_dataset):
     """
     Create dataloaders from a given training datasets
     """
+    print(f"Batch size: {config.TRAIN.BATCH_SIZE}")
     train_dataloader = DataLoader(  training_dataset,
                                     batch_size = config.TRAIN.BATCH_SIZE,
                                     pin_memory = True,
