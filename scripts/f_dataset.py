@@ -340,9 +340,8 @@ def get_endoscapes_mean_std(config):
 
 def get_transform_sequence(config):
     mean, std = get_endoscapes_mean_std(config)
-    img_size = config.DATA.IMG_SIZE
     transform_sequence = transforms.Compose([   transforms.CenterCrop(config.TRAIN.TRANSFORMS.CENTER_CROP),
-                                                transforms.Resize((img_size, img_size)),
+                                                transforms.Resize((384, 384)),
                                                 transforms.ToTensor(),
                                                 transforms.Normalize(
                                                     mean=torch.tensor(mean),
