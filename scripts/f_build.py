@@ -5,7 +5,7 @@ import torch.nn as nn
 
 def build_model(config):
     # Initialise Backbone
-    model = SwinTransformerV2(  img_size=config.DATA.IMG_SIZE,
+    model = SwinTransformerV2(  img_size=384, # important to load correct IMNET pretrained weights
                                 patch_size=config.BACKBONE.SWINV2.PATCH_SIZE,
                                 in_chans=config.BACKBONE.SWINV2.IN_CHANS,
                                 num_classes=config.BACKBONE.NUM_CLASSES,
