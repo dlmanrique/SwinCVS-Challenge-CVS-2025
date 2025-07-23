@@ -156,6 +156,9 @@ def validate_config(config):
     
     experiment_name += f"_sd{config.SEED}"
 
+    if config.EXPERIMENT_NAME:
+        experiment_name = config.EXPERIMENT_NAME
+
     return experiment_name
 
 def find_seed_in_weight(weight_name):

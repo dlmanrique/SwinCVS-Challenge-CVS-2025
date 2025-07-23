@@ -10,6 +10,7 @@ import warnings
 import torch
 import numpy as np
 import torch.nn as nn
+from tqdm import tqdm
 
 # Local imports
 from scripts.f_environment import get_config, set_deterministic_behaviour, verify_results_weights_folder
@@ -43,8 +44,10 @@ set_deterministic_behaviour(seed)
 ##############################################################################################
 ##############################################################################################
 # DATASET and DATALOADER
+
 training_dataset, val_dataset, test_dataset = get_datasets(config)
 train_dataloader, val_dataloader, test_dataloader = get_dataloaders(config, training_dataset, val_dataset, test_dataset)
+
 
 ##############################################################################################
 ##############################################################################################
@@ -88,6 +91,7 @@ if not config.MODEL.INFERENCE:
         multiclasifier_beta = 1-multiclasifier_alpha
 
     print("Beginning training...")
+    
     for epoch in range(num_epochs):
         print(f"Epoch: {epoch+1:02}/{num_epochs:02}")
 
@@ -103,11 +107,14 @@ if not config.MODEL.INFERENCE:
 
         print("Training")
         start_time = time.time()
-        for idx, (samples, targets) in enumerate(train_dataloader):
-            print(f"Processing batch: {idx+1:04}/{len(train_dataloader):04}", end="\r")
+        for idx, (samples, targets) in enumerate(tqdm(train_dataloader)):
+            #print(f"Processing batch: {idx+1:04}/{len(train_dataloader):04}", end="\r")
 
             # Get predictions
+            # samples.shape -> (batch, 3, 384, 384)
+            # targets.shape -> (batch, 3)
             samples, targets = samples.to('cuda'), targets.to('cuda')
+            
             with torch.amp.autocast("cuda", enabled=True):
                 if config.MODEL.E2E and config.MODEL.MULTICLASSIFIER:
                     outputs_swin, outputs_lstm = model(samples)
@@ -135,8 +142,7 @@ if not config.MODEL.INFERENCE:
         val_predictions = []
         val_targets = []
         with torch.inference_mode():
-            for idx, (samples, targets) in enumerate(val_dataloader):
-                print(f"Processing batch: {idx+1:04}/{len(val_dataloader):04}", end="\r")
+            for idx, (samples, targets) in enumerate(tqdm(val_dataloader)):
                 # Get predictions
                 samples, targets = samples.to('cuda'), targets.to('cuda')
                 if config.MODEL.E2E and config.MODEL.MULTICLASSIFIER:
@@ -198,10 +204,9 @@ if not config.MODEL.INFERENCE:
         if mAP >= best_mAP:
             best_mAP = mAP
             print(f"New best result (Epoch {epoch+1}), saving weights...")
-            save_weights(model, config, experiment_name)
+            save_weights(model, config, experiment_name, epoch)
         else:
             print('\n')
-
 
 
 ######
@@ -222,8 +227,7 @@ len_dataloader = len(test_dataloader)
 print('\nTesting')
 model.eval()
 with torch.inference_mode():
-    for idx, (samples, targets) in enumerate(test_dataloader):
-        print(f"Processing batch: {idx+1:04}/{len_dataloader:04}", end="\r")
+    for idx, (samples, targets) in enumerate(tqdm(test_dataloader)):
 
         # Time start
         start_time = time.time()

@@ -15,23 +15,28 @@ def get_datasets(config):
     """
     Check dataset exists (download if not). Create dataset instances and apply transformations specified in config
     """
-    dataset_dir = check_dataset(config)
+    if config.DATASET == 'Endoscapes':
+        dataset_dir = check_dataset(config)
+    elif config.DATASET == 'Sages':
+        dataset_dir = config.DATASET_DIR
+    
     print(f"\nDataset loaded from: {dataset_dir}")
 
-    train_dataframe, val_dataframe, test_dataframe = get_three_dataframes(dataset_dir, lstm=config.MODEL.LSTM)
+    train_dataframe, val_dataframe, test_dataframe = get_three_dataframes(dataset_dir, config, lstm=config.MODEL.LSTM)
 
     transform_sequence = get_transform_sequence(config)
-
+    
     # If SwinCVS model
     if config.MODEL.LSTM:
-            training_dataset = EndoscapesSwinCVS_Dataset(train_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
-            val_dataset = EndoscapesSwinCVS_Dataset(val_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
-            test_dataset = EndoscapesSwinCVS_Dataset(test_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
+        training_dataset = EndoscapesSwinCVS_Dataset(train_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
+        val_dataset = EndoscapesSwinCVS_Dataset(val_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
+        test_dataset = EndoscapesSwinCVS_Dataset(test_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
+
     # If just SwinV2 backbone
     else:
-            training_dataset = Endoscapes_Dataset(train_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
-            val_dataset = Endoscapes_Dataset(val_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
-            test_dataset = Endoscapes_Dataset(test_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
+        training_dataset = Endoscapes_Dataset(train_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
+        val_dataset = Endoscapes_Dataset(val_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
+        test_dataset = Endoscapes_Dataset(test_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
 
     return training_dataset, val_dataset, test_dataset
 
@@ -40,6 +45,7 @@ def check_dataset(config):
     Checks whether specified folder contains valid endoscapes dataset. Redownloads if checksum failed, or folder missing.
     Requires config.DATASET_DIR to lead to the folder containing 'endoscapes' or null - will download to repo dir. 
     """
+
     dataset_path = config.DATASET_DIR
 
     # If dataset is meant to be downloaded into cwd
@@ -93,24 +99,37 @@ def get_dataloaders(config, training_dataset, val_dataset, test_dataset):
                                     pin_memory = True)
     return train_dataloader, val_dataloader, test_dataloader
 
-def get_three_dataframes(image_folder, lstm = False):
+def get_three_dataframes(image_folder, config, lstm = False):
     """
     Get images from the dataset directory, create pandas dataframes of image filepaths and ground truths. 
     """
-    # Specify directories for the splits
-    train_dir = image_folder / 'train'
-    val_dir  = image_folder / 'val'
-    test_dir = image_folder / 'test'
+    if config.DATASET == 'Endoscapes':
+        # Specify directories for the splits
+        train_dir = image_folder / 'train'
+        val_dir  = image_folder / 'val'
+        test_dir = image_folder / 'test'
 
-    # Get filepaths for individual images
-    train_file = [x for x in os.listdir(train_dir) if 'json' and 'ds_coco' in x][0]
-    val_file = [x for x in os.listdir(val_dir) if 'json' and 'ds_coco' in x][0]
-    test_file = [x for x in os.listdir(test_dir) if 'json' and 'ds_coco' in x][0]
+        # Get filepaths for individual images
+        train_file = [x for x in os.listdir(train_dir) if 'json' and 'ds_coco' in x][0]
+        val_file = [x for x in os.listdir(val_dir) if 'json' and 'ds_coco' in x][0]
+        test_file = [x for x in os.listdir(test_dir) if 'json' and 'ds_coco' in x][0]
 
-    # Create dataframe with filepaths for individual images along with ground truth labels
-    train_dataframe = get_dataframe(train_dir / train_file)
-    val_dataframe = get_dataframe(val_dir / val_file)
-    test_dataframe = get_dataframe(test_dir / test_file)
+        # Create dataframe with filepaths for individual images along with ground truth labels
+        train_dataframe = get_dataframe(train_dir / train_file)
+        val_dataframe = get_dataframe(val_dir / val_file)
+        test_dataframe = get_dataframe(test_dir / test_file)
+
+    elif config.DATASET == 'Sages':
+        train_file = f'format_challenge_data/Sages_fold{config.FOLD}_train_data.json'
+        val_file = f'format_challenge_data/Sages_fold{config.FOLD}_test_data.json'
+        test_file = f'format_challenge_data/Sages_fold{config.FOLD}_test_data.json'
+
+        # Create dataframe with filepaths for individual images along with ground truth labels
+        train_dataframe = get_dataframe(train_file)
+        val_dataframe = get_dataframe(val_file)
+        test_dataframe = get_dataframe(test_file)
+
+
     if lstm:
         # Add unlabelled images to the dataframe
         with open(image_folder / 'all' / 'annotation_coco.json', 'r') as file:
@@ -126,16 +145,17 @@ def get_three_dataframes(image_folder, lstm = False):
         train_dataframe = add_unlabelled_imgs(train_images, train_dataframe)
         val_dataframe = add_unlabelled_imgs(val_images, val_dataframe)
         test_dataframe = add_unlabelled_imgs(test_images, test_dataframe)
-   
+        
         # Generate 5 frame sequences and update format to include paths to images
         train_dataframe = get_frame_sequence_dataframe(train_dataframe, train_dir)
         val_dataframe = get_frame_sequence_dataframe(val_dataframe, val_dir)
         test_dataframe = get_frame_sequence_dataframe(test_dataframe, test_dir)
         return train_dataframe, val_dataframe, test_dataframe
 
-    updated_train_dataframe = update_dataframe(train_dataframe, train_dir)
-    updated_val_dataframe = update_dataframe(val_dataframe, val_dir)
-    updated_test_dataframe = update_dataframe(test_dataframe, test_dir)
+    updated_train_dataframe = update_dataframe(train_dataframe, config.DATASET_DIR, config)
+    updated_val_dataframe = update_dataframe(val_dataframe, config.DATASET_DIR, config)
+    updated_test_dataframe = update_dataframe(test_dataframe, config.DATASET_DIR, config)
+    
     return updated_train_dataframe, updated_val_dataframe, updated_test_dataframe
 
 class Endoscapes_Dataset(Dataset):
@@ -158,7 +178,7 @@ class Endoscapes_Dataset(Dataset):
         
         if self.transforms:
             image = self.transforms(image)
-            image = (image-torch.min(image)) / (-torch.min(image)+torch.max(image))
+            image = (image-torch.min(image)) / (-torch.min(image)+torch.max(image)) #Normalize the image in the interval (0,1)
       
         return image, label
     
@@ -207,6 +227,7 @@ def get_dataframe(json_path):
     Get dataframes of the dataset splits in columns:
     idx | vid | frame | C1 | C2 | C3
     """
+
     with open(json_path, 'r') as file:
         data = json.load(file)
     vid = []
@@ -222,7 +243,7 @@ def get_dataframe(json_path):
         file_name = file_name.split('_')
         vid_i = file_name[0]
         frame_i = file_name[1]
-        C1_i = round(i['ds'][0])
+        C1_i = round(i['ds'][0]) #Con esto tienen en cuenta el tema de 3 anotadores
         C2_i = round(i['ds'][1])
         C3_i = round(i['ds'][2])
 
@@ -249,6 +270,7 @@ def get_frame_sequence_dataframe(dataframe, image_folder):
     f0-4 - path to each image in the sequence
     classification - list of ground truth values for C1-3 as, [C1, C2, C3] e.g. [0.0, 0.0, 1.0] 
     """
+
     new_dataframe_rows = []
     # Iterate over each video so as not to create intravid sequences
     for video in dataframe['vid'].unique():
@@ -275,7 +297,7 @@ def get_frame_sequence_dataframe(dataframe, image_folder):
     
     return updated_dataframe
 
-def update_dataframe(dataframe, image_folder):
+def update_dataframe(dataframe, image_folder, config):
     """
     Function only for creation of dataframes when training backbone - SwinV2. It changes the structure of the dataframe from:
     idx | vid | frame | C1 | C2 | C3
@@ -283,7 +305,14 @@ def update_dataframe(dataframe, image_folder):
     idx | path | classification
     where path is a path to a given image and classification is a list of ground truth values for C1-3 as, [C1, C2, C3] e.g. [0.0, 0.0, 1.0] 
     """
-    dataframe['path'] = dataframe.apply(lambda row: generate_path(row, image_folder), axis=1)
+    
+    
+    if config.DATASET == 'Endoscapes':
+        dataframe['path'] = dataframe.apply(lambda row: generate_path(row, image_folder), axis=1)
+    elif config.DATASET == 'Sages':
+        image_folder = os.path.join(image_folder, 'frames')
+        dataframe['path'] = dataframe.apply(lambda row: generate_path_sages(row, image_folder), axis=1)
+
     dataframe['classification'] = dataframe.apply(lambda row: get_class(row), axis=1)
     dataframe.drop(columns=['vid', 'frame', 'C1', 'C2', 'C3'], inplace=True)
     dataframe.reset_index(drop=True, inplace=True)
@@ -321,6 +350,14 @@ def generate_path(row, image_folder):
     vid = row['vid']
     frame = row['frame']
     filename = str(vid) + '_' + str(frame) + '.jpg'
+    path = os.path.join(image_folder, filename)
+    return str(path)
+
+def generate_path_sages(row, image_folder):
+
+    vid = row['vid']
+    frame = row['frame']
+    filename = 'video_' + str(vid).zfill(3) + '/' + str(frame).zfill(5) + '.jpg'
     path = os.path.join(image_folder, filename)
     return str(path)
 
