@@ -1,9 +1,9 @@
 # GENERAL PARAMS
 EXPERIMENT_NAME: 'SwinV2_backbone_Sages_fold_2' #'SwinV2_backbone_Sages_fold_1'  # Overrides automatic experiment naming 
 SEED: 5
-DATASET: 'Sages' #'Sages' #'Endoscapes'
+DATASET: 'Endoscapes' #'Sages' #'Endoscapes'
 FOLD: 2
-DATASET_DIR: '/home/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025/Sages' #'/home/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025/Sages' #'/home/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025' # Folder that contains 'endoscapes' dataset folder, or null to install in repo directory
+DATASET_DIR: '/home/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025' #'/home/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025' # Folder that contains 'endoscapes' dataset folder, or null to install in repo directory
 # SWINCVS MODEL PARAMS
 MODEL:
   LSTM: False

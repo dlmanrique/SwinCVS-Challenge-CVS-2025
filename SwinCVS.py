@@ -44,7 +44,7 @@ set_deterministic_behaviour(seed)
 ##############################################################################################
 ##############################################################################################
 # DATASET and DATALOADER
-
+breakpoint()
 training_dataset, val_dataset, test_dataset = get_datasets(config)
 train_dataloader, val_dataloader, test_dataloader = get_dataloaders(config, training_dataset, val_dataset, test_dataset)
 
