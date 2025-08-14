@@ -103,7 +103,7 @@ def get_three_dataframes(image_folder, config, lstm = False):
     """
     Get images from the dataset directory, create pandas dataframes of image filepaths and ground truths. 
     """
-    breakpoint()
+
     if config.DATASET == 'Endoscapes':
         # Specify directories for the splits
         train_dir = image_folder / 'train'
@@ -129,7 +129,7 @@ def get_three_dataframes(image_folder, config, lstm = False):
         train_dataframe = get_dataframe(train_file)
         val_dataframe = get_dataframe(val_file)
         test_dataframe = get_dataframe(test_file)
-        breakpoint()
+
 
 
     if lstm:

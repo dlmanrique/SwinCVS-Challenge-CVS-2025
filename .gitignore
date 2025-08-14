@@ -9,3 +9,4 @@ Sages_fold1_test_data.json
 Sages_fold1_train_data.json
 Sages_fold2_test_data.json
 Sages_fold2_train_data.json
+wandb/

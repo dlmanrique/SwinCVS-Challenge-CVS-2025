@@ -1,9 +1,14 @@
 # GENERAL PARAMS
-EXPERIMENT_NAME: 'SwinV2_backbone_Sages_fold_2' #'SwinV2_backbone_Sages_fold_1'  # Overrides automatic experiment naming 
+EXPERIMENT_NAME: "" #'SwinV2_backbone_Sages_fold_1'  # Overrides automatic experiment naming 
 SEED: 5
-DATASET: 'Endoscapes' #'Sages' #'Endoscapes'
+DATASET: 'Sages' #'Sages' #'Endoscapes'
 FOLD: 2
-DATASET_DIR: '/home/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025' #'/home/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025' # Folder that contains 'endoscapes' dataset folder, or null to install in repo directory
+DATASET_DIR: '/home/dlmanrique/Endovis/CVS_Challenge_2025/SwinCVS-Challenge-CVS-2025/Sages' #'/home/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025' # Folder that contains 'endoscapes' dataset folder, or null to install in repo directory
+SAVING_DATASET: '/media/lambda001/SSD3/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025/results'
+#SAVING_DATASET: '/media/SSD3/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025/results'
+ENDOSCAPES_INIT: True
+USE_WRS: False
+
 # SWINCVS MODEL PARAMS
 MODEL:
   LSTM: False
@@ -37,7 +42,7 @@ TRAIN:
   MIN_LR: 0.0000001
   MULTICLASSIFIER_ALPHA: 0.8
   SAVE_WEIGHTS: True
-  CHECKPOINT_PATH: null # null if default to weights dir
+  CHECKPOINT_PATH: "" # null if default to weights dir
   LR_SCHEDULER:
     NAME: 'cosine'
     WARMUP_PREFIX: False
@@ -45,7 +50,7 @@ TRAIN:
   ACCUMULATION_STEPS: 1
 # SWINV2 BACKBONE PARAMS
 BACKBONE:
-  PRETRAINED: 'swinv2_base_patch4_window12to24_192to384_22kto1k_ft.pth' #'swinv2_base_patch4_window12to24_192to384_22kto1k_ft.pth' #'Swin_backbone_no_augm_sd4_bestMAP.pt' - for backbone/E2E use IMGNet weights, for E2E use backbone weights
+  PRETRAINED: 'Swin_backbone_no_augm_sd4_bestMAP.pt' #'swinv2_base_patch4_window12to24_192to384_22kto1k_ft.pth' #'Swin_backbone_no_augm_sd4_bestMAP.pt' - for backbone/E2E use IMGNet weights, for E2E use backbone weights
   DROP_PATH_RATE: 0.2
   DROP_RATE: 0.0
   NUM_CLASSES: 1000

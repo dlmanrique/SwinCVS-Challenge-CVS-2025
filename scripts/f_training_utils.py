@@ -98,9 +98,11 @@ def build_optimizer(config, model, **kwargs):
         parameters2= [  {'params': model.swinv2_model.parameters(), 'lr': config.TRAIN.OPTIMIZER.ENCODER_LR},
                         {'params': model.lstm.parameters(), 'lr': config.TRAIN.OPTIMIZER.CLASSIFIER_LR },
                         {'params': model.fc_lstm.parameters(), 'lr': config.TRAIN.OPTIMIZER.CLASSIFIER_LR}]
+        
     # Bare backbone - swinV2
     else:
         parameters2= [  {'params': model.parameters(), 'lr': config.TRAIN.OPTIMIZER.ENCODER_LR}]
+        print(f'LR realmente usado es: {config.TRAIN.OPTIMIZER.ENCODER_LR} ')
 
     if opt_lower == 'adamw':
         optimizer = optim.AdamW(parameters2, eps=config.TRAIN.OPTIMIZER.EPS, betas=config.TRAIN.OPTIMIZER.BETAS,

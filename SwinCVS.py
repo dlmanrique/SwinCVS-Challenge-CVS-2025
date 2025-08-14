@@ -3,8 +3,11 @@ print('Importing libraries...')
 import argparse
 import time
 import json
+import os
+import wandb
+import warnings
+from datetime import datetime
 from pathlib import Path
-import warnings 
 
 # Third-party imports
 import torch
@@ -21,6 +24,9 @@ from scripts.f_metrics import get_map, get_balanced_accuracies
 from scripts.f_training import save_weights
 warnings.filterwarnings("ignore")
 
+
+torch.set_num_threads(1)
+
 ##############################################################################################
 ##############################################################################################
 # ENVIRONMENT
@@ -30,12 +36,34 @@ print(f"Current working directory: {pwd}")
 # Verify necessary folder structure and download weights
 verify_results_weights_folder(pwd)
 
-# Load config
 parser = argparse.ArgumentParser(description="Run SwinCVS with specified config")
-parser.add_argument('--config_path', type=str, required=True, help='Path to config YAML file')
+parser.add_argument('--config_path', type=str, required=False, default='config/SwinCVS_config.yaml' , help='Path to config YAML file')
+parser.add_argument("--TRAIN_OPTIMIZER_ENCODER_LR", type=float, help="Learning rate del encoder")
 args = parser.parse_args()
-config_path = args.config_path
-config, experiment_name = get_config(config_path)
+
+config, experiment_name = get_config(args.config_path, args.TRAIN_OPTIMIZER_ENCODER_LR)
+
+# Wanndb configuration ---------------------------------
+exp_name = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
+# La forma de diferenciar entre solo el SwinV2 y el SWINCVS completo es si MODEL.LSTM = False
+wandb.init(
+    project='SwinCVS', 
+    entity = 'endovis_bcv',
+    config=vars(config), 
+    name=exp_name
+    )
+
+wandb.config.update(config)
+
+# (Opcional) imprimir para verificar
+print("Config final usada:")
+print(config)
+
+# Create folder for saving outputs
+os.makedirs(os.path.join(config.SAVING_DATASET, experiment_name, exp_name), exist_ok=True)
+complete_exp_info_folder = os.path.join(config.SAVING_DATASET, experiment_name, exp_name)
+
 
 seed = config.SEED
 set_deterministic_behaviour(seed)
@@ -44,10 +72,8 @@ set_deterministic_behaviour(seed)
 ##############################################################################################
 ##############################################################################################
 # DATASET and DATALOADER
-breakpoint()
 training_dataset, val_dataset, test_dataset = get_datasets(config)
 train_dataloader, val_dataloader, test_dataloader = get_dataloaders(config, training_dataset, val_dataset, test_dataset)
-
 
 ##############################################################################################
 ##############################################################################################
@@ -80,7 +106,10 @@ print(f"Experiment name: {experiment_name}\n")
 results_dict = {}
 if not config.MODEL.INFERENCE:
     num_epochs = config.TRAIN.EPOCHS
-    checkpoint_path = pwd / 'weights'
+
+    checkpoint_path = os.path.join(complete_exp_info_folder, 'weights')
+    os.makedirs(checkpoint_path, exist_ok=True)
+
     best_mAP = 0
     start_time = 0
     end_time = 0
@@ -133,6 +162,7 @@ if not config.MODEL.INFERENCE:
                                     update_grad=(idx + 1) % config.TRAIN.ACCUMULATION_STEPS == 0)
             optimizer.zero_grad()
             train_loss+=loss_train.item()
+            wandb.log({'Training Loss': loss_train.item()})
             torch.cuda.synchronize()
         
         # Validation Epochs
@@ -162,6 +192,7 @@ if not config.MODEL.INFERENCE:
                 # Loss
                 loss_val = criterion(outputs_lstm, targets)
                 val_loss += loss_val.item()
+                wandb.log({'Val Loss': loss_val.item()})
                 torch.cuda.synchronize()
 
         # Get validation scores
@@ -189,9 +220,19 @@ if not config.MODEL.INFERENCE:
                         'train_loss': train_loss, 'val_loss': val_loss}
         results_dict[f"Epoch {epoch+1}"] = epoch_results
 
-        # Save results
-        with open(pwd / 'results' / f'{experiment_name}_results.json', 'w') as file:
+        
+        results_file_path = '/'.join(checkpoint_path.split('/')[:-1])
+        with open(os.path.join(results_file_path, f'results.json'), 'w') as file:
             json.dump(results_dict, file, indent=4)
+
+        keys_a_borrar = ["preds", "true", 'preds_prob', 'train_loss', 'val_loss']
+        for key in keys_a_borrar:
+            epoch_results.pop(key, None)
+
+        wandb.log({'Val metrics': epoch_results})
+        # Save results
+
+        
 
         # Estimate remaining time
         end_time = time.time()
@@ -204,7 +245,7 @@ if not config.MODEL.INFERENCE:
         if mAP >= best_mAP:
             best_mAP = mAP
             print(f"New best result (Epoch {epoch+1}), saving weights...")
-            save_weights(model, config, experiment_name, epoch)
+            save_weights(model, checkpoint_path, epoch)
         else:
             print('\n')
 
@@ -288,5 +329,14 @@ epoch_results = {'avg_bal_acc': round(total_balanced_accuracy, 4),
                 'mean_inference_ms': mean_inference, 'std_inference_ms': std_inference, 'total_inference_s': total_inference}
 results_dict[f"Testing_@E{best_epoch+1}"] = epoch_results # CHANGE THE BEST EPOCH
 
-with open(pwd / 'results' / f'{experiment_name}_results.json', 'w') as file:
+results_file_path = '/'.join(checkpoint_path.split('/')[:-1])
+with open(os.path.join(results_file_path, f'results.json'), 'w') as file:
     json.dump(results_dict, file, indent=4)
+
+
+keys_a_borrar = ["preds", "true", 'preds_prob', 'train_loss', 'val_loss']
+for key in keys_a_borrar:
+    epoch_results.pop(key, None)
+
+wandb.log({'Test metrics': epoch_results})
+
