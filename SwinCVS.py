@@ -255,6 +255,7 @@ if not config.MODEL.INFERENCE:
             best_mAP = mAP
             print(f"New best result (Epoch {epoch+1}), saving weights...")
             save_weights(model, checkpoint_path, epoch)
+            wandb.log({'Best_Val_mAP': mAP})
         else:
             print('\n')
 
