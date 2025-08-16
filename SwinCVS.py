@@ -41,6 +41,7 @@ parser.add_argument('--config_path', type=str, required=False, default='config/S
 parser.add_argument('--direction', type=str, required=True, choices=['past', 'both', 'future'])
 parser.add_argument('--fps', type=int, required=True, choices=[10, 15, 30])
 parser.add_argument('--extend_method', type=str, required=True, choices=['balanced', 'unbalanced'])
+parser.add_argument('--frame_type', type=str, required=False, default='Original', choices=['Original', 'Preprocessed'])
 args = parser.parse_args()
 
 config, experiment_name = get_config(args.config_path)

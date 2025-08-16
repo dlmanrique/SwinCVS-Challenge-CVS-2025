@@ -31,14 +31,14 @@ def get_datasets(config, args):
     print(f'Number of keyframes on valid split: {len(val_dataframe)}')
     print(f'Number of keyframes on test split: {len(test_dataframe)}')
 
-    # Sanity check info
+    """# Sanity check info
     train_file = f'format_challenge_data/extended_annots/{args.extend_method}/Fold{config.FOLD}/{args.direction}/{args.fps}/train_data.json'
     val_file = f'format_challenge_data/extended_annots/{args.extend_method}/Fold{config.FOLD}/{args.direction}/{args.fps}/test_data.json'
     test_file = f'format_challenge_data/extended_annots/{args.extend_method}/Fold{config.FOLD}/{args.direction}/{args.fps}/test_data.json'
 
     wandb.log({'Train data': train_file})
     wandb.log({'Val data': val_file})
-    wandb.log({'Test data': test_file})
+    wandb.log({'Test data': test_file})"""
 
 
     transform_sequence = get_transform_sequence(config)
@@ -139,9 +139,18 @@ def get_three_dataframes(image_folder, config, args, lstm = False):
 
     elif config.DATASET == 'Sages':
 
-        train_file = f'format_challenge_data/extended_annots/{args.extend_method}/Fold{config.FOLD}/{args.direction}/{args.fps}/train_data.json'
-        val_file = f'format_challenge_data/extended_annots/{args.extend_method}/Fold{config.FOLD}/{args.direction}/{args.fps}/test_data.json'
-        test_file = f'format_challenge_data/extended_annots/{args.extend_method}/Fold{config.FOLD}/{args.direction}/{args.fps}/test_data.json'
+        if args.extend_method:
+            # If exists, then the experiment with extending annots
+            train_file = f'format_challenge_data/extended_annots/{args.extend_method}/Fold{config.FOLD}/{args.direction}/{args.fps}/train_data.json'
+            val_file = f'format_challenge_data/extended_annots/{args.extend_method}/Fold{config.FOLD}/{args.direction}/{args.fps}/test_data.json'
+            test_file = f'format_challenge_data/extended_annots/{args.extend_method}/Fold{config.FOLD}/{args.direction}/{args.fps}/test_data.json'
+        
+        else:
+            # Run experiment only with challenge data
+            train_file = f'format_challenge_data/Sages_fold{config.FOLD}_train_data.json'
+            val_file = f'format_challenge_data/Sages_fold{config.FOLD}_test_data.json'
+            test_file = f'format_challenge_data/Sages_fold{config.FOLD}_test_data.json'
+
 
         # Create dataframe with filepaths for individual images along with ground truth labels
         train_dataframe = get_dataframe(train_file)
@@ -171,9 +180,9 @@ def get_three_dataframes(image_folder, config, args, lstm = False):
         test_dataframe = get_frame_sequence_dataframe(test_dataframe, test_dir)
         return train_dataframe, val_dataframe, test_dataframe
 
-    updated_train_dataframe = update_dataframe(train_dataframe, config.DATASET_DIR, config)
-    updated_val_dataframe = update_dataframe(val_dataframe, config.DATASET_DIR, config)
-    updated_test_dataframe = update_dataframe(test_dataframe, config.DATASET_DIR, config)
+    updated_train_dataframe = update_dataframe(train_dataframe, config.DATASET_DIR, config, args)
+    updated_val_dataframe = update_dataframe(val_dataframe, config.DATASET_DIR, config, args)
+    updated_test_dataframe = update_dataframe(test_dataframe, config.DATASET_DIR, config, args)
     
     return updated_train_dataframe, updated_val_dataframe, updated_test_dataframe
 
@@ -316,7 +325,7 @@ def get_frame_sequence_dataframe(dataframe, image_folder):
     
     return updated_dataframe
 
-def update_dataframe(dataframe, image_folder, config):
+def update_dataframe(dataframe, image_folder, config, args):
     """
     Function only for creation of dataframes when training backbone - SwinV2. It changes the structure of the dataframe from:
     idx | vid | frame | C1 | C2 | C3
@@ -331,7 +340,12 @@ def update_dataframe(dataframe, image_folder, config):
 
     # TODO: arreglar esto para cuanto tomemos frames_cutmargin y asi
     elif config.DATASET == 'Sages':
-        image_folder = os.path.join(image_folder, 'frames')
+
+        if args.frame_type == 'Original':
+            image_folder = os.path.join(image_folder, 'frames')
+        elif args.frame_type == 'Preprocessed':
+            image_folder = os.path.join(image_folder, 'frames_cutmargin')
+
         dataframe['path'] = dataframe.apply(lambda row: generate_path_sages(row, image_folder), axis=1)
 
     dataframe['classification'] = dataframe.apply(lambda row: get_class(row), axis=1)
