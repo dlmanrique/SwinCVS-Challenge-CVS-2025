@@ -79,14 +79,13 @@ def download_extract_zip(download_path, url):
             zip_file_path.unlink()
             print(f"Cleaned up temporary zip file: {zip_file_path}")
 
-def get_config(config_path, lr):
+def get_config(config_path):
     """
     Runs functions related to reading, processing, and informing user about the config setup.
     """
 
     config_dict = read_config(config_path)
     config = config_to_yacs(config_dict)
-    config.TRAIN.OPTIMIZER.ENCODER_LR = lr
     experiment_name = validate_config(config) # de aca espero un str vacio ""
 
     # Verify the selected model

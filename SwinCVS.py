@@ -38,23 +38,32 @@ verify_results_weights_folder(pwd)
 
 parser = argparse.ArgumentParser(description="Run SwinCVS with specified config")
 parser.add_argument('--config_path', type=str, required=False, default='config/SwinCVS_config.yaml' , help='Path to config YAML file')
-parser.add_argument("--TRAIN_OPTIMIZER_ENCODER_LR", type=float, help="Learning rate del encoder")
+parser.add_argument('--direction', type=str, required=True, choices=['past', 'both', 'future'])
+parser.add_argument('--fps', type=int, required=True, choices=[10, 15, 30])
+parser.add_argument('--extend_method', type=str, required=True, choices=['balanced', 'unbalanced'])
 args = parser.parse_args()
 
-config, experiment_name = get_config(args.config_path, args.TRAIN_OPTIMIZER_ENCODER_LR)
+config, experiment_name = get_config(args.config_path)
 
 # Wanndb configuration ---------------------------------
-exp_name = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 
 # La forma de diferenciar entre solo el SwinV2 y el SWINCVS completo es si MODEL.LSTM = False
+# convertir a dict
+args_dict = vars(args)           # argumentos CLI
+config_dict = vars(config) if not isinstance(config, dict) else config  # YAML config
+
+# unir ambos (args tiene prioridad si hay colisión de claves)
+wandb_config = {**config_dict, **args_dict}
+
+# nombre experimento
+exp_name = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
 wandb.init(
     project='SwinCVS', 
-    entity = 'endovis_bcv',
-    config=vars(config), 
+    entity='endovis_bcv',
+    config=wandb_config,
     name=exp_name
-    )
-
-wandb.config.update(config)
+)
 
 # (Opcional) imprimir para verificar
 print("Config final usada:")
@@ -72,7 +81,7 @@ set_deterministic_behaviour(seed)
 ##############################################################################################
 ##############################################################################################
 # DATASET and DATALOADER
-training_dataset, val_dataset, test_dataset = get_datasets(config)
+training_dataset, val_dataset, test_dataset = get_datasets(config, args)
 train_dataloader, val_dataloader, test_dataloader = get_dataloaders(config, training_dataset, val_dataset, test_dataset)
 
 ##############################################################################################

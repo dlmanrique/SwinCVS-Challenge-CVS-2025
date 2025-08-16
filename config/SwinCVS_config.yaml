@@ -8,6 +8,7 @@ SAVING_DATASET: '/media/lambda001/SSD3/dlmanrique/Endovis/CVS_Challenge/SOTAS/Sw
 #SAVING_DATASET: '/media/SSD3/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025/results'
 ENDOSCAPES_INIT: True
 USE_WRS: False
+DATA_TYPE: 'original_challenge_data' # identificadfor paa el wandb
 
 # SWINCVS MODEL PARAMS
 MODEL:
@@ -21,7 +22,7 @@ MODEL:
   INFERENCE_WEIGHTS: 'SwinV2LSTM_e2e_raw_mc_V3_sd5_bestMAP.pt'
 # TRAINING PARAMS
 TRAIN:
-  EPOCHS: 15 #15 -> for swinv2 backbone training
+  EPOCHS: 7 #15 -> for swinv2 backbone training
   LIMIT_DATA_FRACTION: 1 # Limits how much data is used for constructing the train, val, test datasets. 1 = 100%, 5 = 20% etc.
   TRANSFORMS:
     ENDOSCAPES_MEAN: [0.485, 0.456, 0.406]
