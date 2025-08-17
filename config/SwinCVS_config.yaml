@@ -2,11 +2,11 @@
 EXPERIMENT_NAME: "" #'SwinV2_backbone_Sages_fold_1'  # Overrides automatic experiment naming 
 SEED: 5
 DATASET: 'Sages' #'Sages' #'Endoscapes'
-FOLD: 1
-#DATASET_DIR: '/home/dlmanrique/Endovis/CVS_Challenge_2025/SwinCVS-Challenge-CVS-2025/Sages'
-DATASET_DIR: '/home/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025/Sages'  # Folder that contains 'endoscapes' dataset folder, or null to install in repo directory
-#SAVING_DATASET: '/media/lambda001/SSD3/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025/results'
-SAVING_DATASET: '/media/SSD3/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025/results'
+FOLD: 2
+DATASET_DIR: '/home/dlmanrique/Endovis/CVS_Challenge_2025/SwinCVS-Challenge-CVS-2025/Sages'
+#DATASET_DIR: '/home/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025/Sages'  # Folder that contains 'endoscapes' dataset folder, or null to install in repo directory
+SAVING_DATASET: '/media/lambda001/SSD3/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025/results'
+#SAVING_DATASET: '/media/SSD3/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025/results'
 ENDOSCAPES_INIT: True
 USE_WRS: False
 DATA_TYPE: 'original_challenge_data' # identificadfor paa el wandb

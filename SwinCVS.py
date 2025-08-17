@@ -207,12 +207,7 @@ if not config.MODEL.INFERENCE:
                 torch.cuda.synchronize()
 
         # Get validation scores
-        C1_balanced_accuracy, C2_balanced_accuracy, C3_balanced_accuracy, total_balanced_accuracy = get_balanced_accuracies(val_targets, val_predictions)
         C1_ap, C2_ap, C3_ap, mAP = get_map(val_targets, val_probabilities)
-        print('\nAverage balanced accuracy', round((C1_balanced_accuracy+C1_balanced_accuracy+C3_balanced_accuracy)/3, 4))
-        print('C1 bacc', round(C1_balanced_accuracy, 4))
-        print('C2 bacc', round(C2_balanced_accuracy, 4))
-        print('C3 bacc', round(C3_balanced_accuracy, 4))
         print('mAP', round(mAP, 4))
         print('C1 ap', round(C1_ap, 4))
         print('C2 ap', round(C2_ap, 4))
@@ -223,9 +218,7 @@ if not config.MODEL.INFERENCE:
         val_probabilities_2save = torch.cat(val_probabilities, dim=0).tolist()
         val_targets_2save = torch.cat(val_targets, dim=0).tolist()
 
-        epoch_results = {'avg_bal_acc': round(total_balanced_accuracy, 4),
-                        'C1_bacc': round(C1_balanced_accuracy, 4), 'C2_bacc': round(C2_balanced_accuracy, 4), 'C3_bacc': round(C3_balanced_accuracy, 4),
-                        'avg_map': round(mAP, 4),
+        epoch_results = {'avg_map': round(mAP, 4),
                         'C1_map': round(C1_ap, 4), 'C2_map': round(C2_ap, 4), 'C3_map': round(C3_ap, 4),
                         'preds': val_predictions_2save, 'true': val_targets_2save, 'preds_prob': val_probabilities_2save,
                         'train_loss': train_loss, 'val_loss': val_loss}
@@ -241,7 +234,6 @@ if not config.MODEL.INFERENCE:
             epoch_results.pop(key, None)
 
         wandb.log({'Val metrics': epoch_results})
-        # Save results
 
         
 
@@ -261,6 +253,48 @@ if not config.MODEL.INFERENCE:
         else:
             print('\n')
 
+        if epoch%3 == 0:
+
+            # Validation Epochs
+            print("\nValidation using Train data")
+            model.eval()
+            val_train_probabilities = []
+            val_train_predictions = []
+            val_train_targets = []
+            with torch.inference_mode():
+                for idx, (samples, targets) in enumerate(tqdm(train_dataloader)):
+                    # Get predictions
+                    samples, targets = samples.to('cuda'), targets.to('cuda')
+                    if config.MODEL.E2E and config.MODEL.MULTICLASSIFIER:
+                        outputs_swin, outputs_lstm = model(samples)
+                    else:
+                        outputs_lstm = model(samples)
+                    
+                    # Get outputs
+                    val_train_probability = torch.sigmoid(outputs_lstm)
+                    val_train_prediction = torch.round(val_train_probability)
+
+                    # Save outputs
+                    val_train_probabilities.append(val_train_probability.to('cpu'))
+                    val_train_predictions.append(val_train_prediction.to('cpu'))
+                    val_train_targets.append(targets.to('cpu'))
+
+                    # Loss
+                    loss_val = criterion(outputs_lstm, targets)
+                    val_loss += loss_val.item()
+                    wandb.log({'Val Loss': loss_val.item()})
+                    torch.cuda.synchronize()
+
+            # Get validation scores
+            C1_ap, C2_ap, C3_ap, mAP = get_map(val_train_targets, val_train_probabilities)
+            print('mAP', round(mAP, 4))
+            print('C1 ap', round(C1_ap, 4))
+            print('C2 ap', round(C2_ap, 4))
+            print('C3 ap', round(C3_ap, 4))
+
+            train_eval_results = {'avg_map': round(mAP, 4),
+                                'C1_map': round(C1_ap, 4), 'C2_map': round(C2_ap, 4), 'C3_map': round(C3_ap, 4),}
+            wandb.log({'Train eval metrics': train_eval_results})
 
 ######
 # ADD CHOOSING AND LOADING BEST EPOCH FROM TRAINIG IF NOT INFERENCE
