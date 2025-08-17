@@ -212,6 +212,7 @@ class Endoscapes_Dataset(Dataset):
         return len(self.image_dataframe)
     
     def __getitem__(self, idx):
+        breakpoint()
         image_info = self.image_dataframe.iloc[idx]
         image_path = image_info['path']
         label = torch.tensor(image_info['classification'])
@@ -425,11 +426,6 @@ def get_class(row):
 def get_endoscapes_mean_std(config):
     mean = config.TRAIN.TRANSFORMS.ENDOSCAPES_MEAN
     std = config.TRAIN.TRANSFORMS.ENDOSCAPES_STD
-
-    # Change BGR to RGB
-    mean = mean[::-1]
-    std = std[::-1]
-
     return mean, std
 
 def get_transform_sequence(config):
