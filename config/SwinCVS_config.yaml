@@ -2,12 +2,13 @@
 EXPERIMENT_NAME: "" #'SwinV2_backbone_Sages_fold_1'  # Overrides automatic experiment naming 
 SEED: 5
 DATASET: 'Sages' #'Sages' #'Endoscapes'
-FOLD: 2
+FOLD: 1
 DATASET_DIR: '/home/dlmanrique/Endovis/CVS_Challenge_2025/SwinCVS-Challenge-CVS-2025/Sages' #'/home/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025' # Folder that contains 'endoscapes' dataset folder, or null to install in repo directory
 SAVING_DATASET: '/media/lambda001/SSD3/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025/results'
 #SAVING_DATASET: '/media/SSD3/dlmanrique/Endovis/CVS_Challenge/SOTAS/SwinCVS-Challenge-CVS-2025/results'
 ENDOSCAPES_INIT: True
 USE_WRS: False
+DATA_TYPE: 'original_challenge_data' # identificadfor paa el wandb
 
 # SWINCVS MODEL PARAMS
 MODEL:
@@ -33,7 +34,7 @@ TRAIN:
     EPS: 1.0e-08
     BETAS: [0.9, 0.999]
     WEIGHT_DECAY: 0.02
-    ENCODER_LR: 0.00001
+    ENCODER_LR: 0.0000464158883
     CLASSIFIER_LR: 0.001
   CLASS_WEIGHTS: [3.19852941, 4.46153846, 2.79518072]
   WARMUP_EPOCHS: 4

@@ -6,15 +6,17 @@ import random
 import json
 import pandas as pd
 import shutil
+import wandb
 
 from torchvision import transforms
 from pathlib import Path
 from scripts.f_environment import download_extract_zip
 
-def get_datasets(config):
+def get_datasets(config, args):
     """
     Check dataset exists (download if not). Create dataset instances and apply transformations specified in config
     """
+
     if config.DATASET == 'Endoscapes':
         dataset_dir = check_dataset(config)
     elif config.DATASET == 'Sages':
@@ -22,7 +24,23 @@ def get_datasets(config):
     
     print(f"\nDataset loaded from: {dataset_dir}")
 
-    train_dataframe, val_dataframe, test_dataframe = get_three_dataframes(dataset_dir, config, lstm=config.MODEL.LSTM)
+    train_dataframe, val_dataframe, test_dataframe = get_three_dataframes(dataset_dir, config, args, lstm=config.MODEL.LSTM)
+
+
+    print(f'Number of keyframes on train split: {len(train_dataframe)}')
+    print(f'Number of keyframes on valid split: {len(val_dataframe)}')
+    print(f'Number of keyframes on test split: {len(test_dataframe)}')
+
+    if args.direction != 'None':
+        # Sanity check info
+        train_file = f'format_challenge_data/extended_annots/{args.extend_method}/Fold{config.FOLD}/{args.direction}/{args.fps}/train_data.json'
+        val_file = f'format_challenge_data/extended_annots/{args.extend_method}/Fold{config.FOLD}/{args.direction}/{args.fps}/test_data.json'
+        test_file = f'format_challenge_data/extended_annots/{args.extend_method}/Fold{config.FOLD}/{args.direction}/{args.fps}/test_data.json'
+
+        wandb.log({'Train data': train_file})
+        wandb.log({'Val data': val_file})
+        wandb.log({'Test data': test_file})
+
 
     transform_sequence = get_transform_sequence(config)
     
@@ -78,19 +96,28 @@ def check_dataset(config):
         download_extract_zip(dataset_dir.parent, 'https://s3.unistra.fr/camma_public/datasets/endoscapes/endoscapes.zip')
     return dataset_dir
 
-def get_dataloaders(config, test_dataset):
+def get_dataloaders(config, training_dataset, val_dataset, test_dataset):
     """
     Create dataloaders from a given training datasets
     """
     print(f"Batch size: {config.TRAIN.BATCH_SIZE}")
+    train_dataloader = DataLoader(  training_dataset,
+                                    batch_size = config.TRAIN.BATCH_SIZE,
+                                    pin_memory = True,
+                                    shuffle = True)
+
+    val_dataloader = DataLoader(    val_dataset,
+                                    batch_size = 1,
+                                    shuffle = False,
+                                    pin_memory = True)
 
     test_dataloader = DataLoader(   test_dataset,
                                     batch_size = 1,
                                     shuffle = False,
                                     pin_memory = True)
-    return test_dataloader
+    return train_dataloader, val_dataloader, test_dataloader
 
-def get_three_dataframes(image_folder, config, lstm = False):
+def get_three_dataframes(image_folder, config, args, lstm = False):
     """
     Get images from the dataset directory, create pandas dataframes of image filepaths and ground truths. 
     """
@@ -112,15 +139,36 @@ def get_three_dataframes(image_folder, config, lstm = False):
         test_dataframe = get_dataframe(test_dir / test_file)
 
     elif config.DATASET == 'Sages':
-        train_file = f'format_challenge_data/Sages_fold{config.FOLD}_train_data.json'
-        val_file = f'format_challenge_data/Sages_fold{config.FOLD}_test_data.json'
-        test_file = f'format_challenge_data/Sages_fold{config.FOLD}_test_data.json'
+
+        if args.extend_method != 'None':
+            # If exists, then the experiment with extending annots
+            train_file = f'format_challenge_data/extended_annots/{args.extend_method}/Fold{config.FOLD}/{args.direction}/{args.fps}/train_data.json'
+            val_file = f'format_challenge_data/extended_annots/{args.extend_method}/Fold{config.FOLD}/{args.direction}/{args.fps}/test_data.json'
+            test_file = f'format_challenge_data/extended_annots/{args.extend_method}/Fold{config.FOLD}/{args.direction}/{args.fps}/test_data.json'
+        
+        else:
+
+            # Mapear rutas según tipo de frame
+            train_paths = {
+                "Original": f"format_challenge_data/Sages_fold{config.FOLD}_train_data.json",
+                "Preprocessed": f"format_challenge_data/preprocessed_data/Fold{config.FOLD}/train.json"
+            }
+
+            test_paths = {
+                "Original": f"format_challenge_data/Sages_fold{config.FOLD}_test_data.json",
+                "Preprocessed": f"format_challenge_data/preprocessed_data/Fold{config.FOLD}/test.json"
+            }
+
+            # Seleccionar según args
+            train_file = train_paths.get(args.frame_type_train)
+            val_file = test_paths.get(args.frame_type_test)
+            test_file = test_paths.get(args.frame_type_test)
+
 
         # Create dataframe with filepaths for individual images along with ground truth labels
         train_dataframe = get_dataframe(train_file)
         val_dataframe = get_dataframe(val_file)
         test_dataframe = get_dataframe(test_file)
-
 
 
     if lstm:
@@ -145,10 +193,11 @@ def get_three_dataframes(image_folder, config, lstm = False):
         test_dataframe = get_frame_sequence_dataframe(test_dataframe, test_dir)
         return train_dataframe, val_dataframe, test_dataframe
 
-    updated_train_dataframe = update_dataframe(train_dataframe, config.DATASET_DIR, config)
-    updated_val_dataframe = update_dataframe(val_dataframe, config.DATASET_DIR, config)
-    updated_test_dataframe = update_dataframe(test_dataframe, config.DATASET_DIR, config)
+    updated_train_dataframe = update_dataframe(train_dataframe, config.DATASET_DIR, config, args, 'train')
+    updated_val_dataframe = update_dataframe(val_dataframe, config.DATASET_DIR, config, args, 'valid')
+    updated_test_dataframe = update_dataframe(test_dataframe, config.DATASET_DIR, config, args, 'test')
     
+
     return updated_train_dataframe, updated_val_dataframe, updated_test_dataframe
 
 class Endoscapes_Dataset(Dataset):
@@ -290,7 +339,7 @@ def get_frame_sequence_dataframe(dataframe, image_folder):
     
     return updated_dataframe
 
-def update_dataframe(dataframe, image_folder, config):
+def update_dataframe(dataframe, image_folder, config, args, split):
     """
     Function only for creation of dataframes when training backbone - SwinV2. It changes the structure of the dataframe from:
     idx | vid | frame | C1 | C2 | C3
@@ -302,8 +351,23 @@ def update_dataframe(dataframe, image_folder, config):
     
     if config.DATASET == 'Endoscapes':
         dataframe['path'] = dataframe.apply(lambda row: generate_path(row, image_folder), axis=1)
+
     elif config.DATASET == 'Sages':
-        image_folder = os.path.join(image_folder, 'frames')
+
+        if args.frame_type_train == 'Original':
+            image_folder = os.path.join(image_folder, 'frames')
+
+        elif args.frame_type_train == 'Preprocessed' and split == 'train':
+            # Establezco que el train siempre sea preprocesado, lo que varia es el test
+            image_folder = os.path.join(image_folder, 'frames_cutmargin')
+        
+        elif args.frame_type_test == 'Preprocessed' and (split == 'valid' or split == 'test'):
+            image_folder = os.path.join(image_folder, 'frames_cutmargin')
+
+        elif args.frame_type_test == 'Original' and (split == 'valid' or split == 'test'):
+            image_folder = os.path.join(image_folder, 'frames')
+
+
         dataframe['path'] = dataframe.apply(lambda row: generate_path_sages(row, image_folder), axis=1)
 
     dataframe['classification'] = dataframe.apply(lambda row: get_class(row), axis=1)
