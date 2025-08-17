@@ -37,27 +37,12 @@ def extend_annots(dict_annots: dict, fold: str, split: str, fps: int, balanced: 
         new_info.append({'file_name': f'{str(video_id).zfill(3)}_{frame_id}.jpg',
                          'ds': annot})
 
-  
-        # Extend annotations depending on function parameters
-        if balanced:
-            for t in range(1, times + 1):
-                offset = fps * t
-
-                if direction in ('future', 'both'):
-                    future_id = frame_id + offset
-                    if future_id <= max_frame_id:
-                        new_info.append({'file_name': f'{str(video_id).zfill(3)}_{future_id}.jpg',
-                                        'ds': annot})
-
-                if direction in ('past', 'both'):
-                    past_id = frame_id - offset
-                    if past_id >= min_frame_id:
-                        new_info.append({'file_name': f'{str(video_id).zfill(3)}_{past_id}.jpg',
-                                        'ds': annot})
-
+        if split == 'test':
+            pass
 
         else:
-            if sum(annot) > 0:
+            # Extend annotations depending on function parameters
+            if balanced:
                 for t in range(1, times + 1):
                     offset = fps * t
 
@@ -72,12 +57,32 @@ def extend_annots(dict_annots: dict, fold: str, split: str, fps: int, balanced: 
                         if past_id >= min_frame_id:
                             new_info.append({'file_name': f'{str(video_id).zfill(3)}_{past_id}.jpg',
                                             'ds': annot})
+
+
+            else:
+                if sum(annot) > 0:
+                    for t in range(1, times + 1):
+                        offset = fps * t
+
+                        if direction in ('future', 'both'):
+                            future_id = frame_id + offset
+                            if future_id <= max_frame_id:
+                                new_info.append({'file_name': f'{str(video_id).zfill(3)}_{future_id}.jpg',
+                                                'ds': annot})
+
+                        if direction in ('past', 'both'):
+                            past_id = frame_id - offset
+                            if past_id >= min_frame_id:
+                                new_info.append({'file_name': f'{str(video_id).zfill(3)}_{past_id}.jpg',
+                                                'ds': annot})
                 
 
     balanced_str = 'balanced' if balanced else 'unbalanced'
     save_dir = f'extended_annots/{balanced_str}/Fold{fold}/{direction}/{fps}'
     os.makedirs(save_dir, exist_ok=True)
     save_json_file(os.path.join(save_dir, f'{split}_data.json'), {'images': new_info})
+
+    return len(new_info)
 
 
 
@@ -87,14 +92,20 @@ if __name__ == '__main__':
 
 
     for json_name in json_files:
+        print(f'Processing {json_name}')
+        
         data = load_json_file(json_name)
+
+        print(f'Initial number of keyframes: {len(data["images"])}')
+
         fold = json_name.split('fold')[-1][0]
         split = json_name.split('_')[2]
 
-        extend_annots(data,
+        final_len = extend_annots(data,
                       fold,
                       split,
                       fps=30, 
                       balanced=False, 
                       times=1,
                       direction='future')
+        print(f'Final number of key frames: {final_len}')
