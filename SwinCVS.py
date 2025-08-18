@@ -265,7 +265,7 @@ if not config.MODEL.INFERENCE:
         else:
             print('\n')
 
-        if epoch%3 == 0:
+        if epoch%3 == 0 and config.TRAIN_EVAL:
 
             # Validation Epochs
             print("\nValidation using Train data")

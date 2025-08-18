@@ -136,7 +136,7 @@ def get_three_dataframes(image_folder, config, args, lstm = False):
     """
     Get images from the dataset directory, create pandas dataframes of image filepaths and ground truths. 
     """
-
+    wrs_weights = None
     if config.DATASET == 'Endoscapes':
         # Specify directories for the splits
         train_dir = image_folder / 'train'
@@ -223,7 +223,7 @@ def get_three_dataframes(image_folder, config, args, lstm = False):
         return train_dataframe, val_dataframe, test_dataframe
 
     updated_train_dataframe = update_dataframe(train_dataframe, config.DATASET_DIR, config, args, 'train')
-    updated_val_dataframe = update_dataframe(val_dataframe, config.DATASET_DIR, config, args, 'valid')
+    updated_val_dataframe = update_dataframe(val_dataframe, config.DATASET_DIR, config, args, 'val')
     updated_test_dataframe = update_dataframe(test_dataframe, config.DATASET_DIR, config, args, 'test')
     
 
@@ -379,6 +379,7 @@ def update_dataframe(dataframe, image_folder, config, args, split):
     
     
     if config.DATASET == 'Endoscapes':
+        image_folder = os.path.join(image_folder, 'endoscapes',  f'{split}_cutmargins')
         dataframe['path'] = dataframe.apply(lambda row: generate_path(row, image_folder), axis=1)
 
     elif config.DATASET == 'Sages':
@@ -390,10 +391,10 @@ def update_dataframe(dataframe, image_folder, config, args, split):
             # Establezco que el train siempre sea preprocesado, lo que varia es el test
             image_folder = os.path.join(image_folder, 'frames_cutmargin')
         
-        elif args.frame_type_test == 'Preprocessed' and (split == 'valid' or split == 'test'):
+        elif args.frame_type_test == 'Preprocessed' and (split == 'val' or split == 'test'):
             image_folder = os.path.join(image_folder, 'frames_cutmargin')
 
-        elif args.frame_type_test == 'Original' and (split == 'valid' or split == 'test'):
+        elif args.frame_type_test == 'Original' and (split == 'val' or split == 'test'):
             image_folder = os.path.join(image_folder, 'frames')
 
 
