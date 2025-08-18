@@ -10,6 +10,7 @@ SAVING_DATASET: '/media/lambda001/SSD3/dlmanrique/Endovis/CVS_Challenge/SOTAS/Sw
 ENDOSCAPES_INIT: True
 USE_WRS: False
 DATA_TYPE: 'original_challenge_data' # identificadfor paa el wandb
+DATA_AUGMENTATION: False
 
 # SWINCVS MODEL PARAMS
 MODEL:
@@ -28,14 +29,16 @@ TRAIN:
   TRANSFORMS:
     ENDOSCAPES_MEAN: [0.485, 0.456, 0.406]
     ENDOSCAPES_STD: [0.229, 0.224, 0.225]
+    #ENDOSCAPES_MEAN: [0.3476, 0.2244, 0.2319]
+    #ENDOSCAPES_STD: [0.2308, 0.1786, 0.1781]
     CENTER_CROP: 480
-  BATCH_SIZE: 24 #24 -> for backbone training / 40 -> for swinCVS Frozen / 4 -> for E2E training
+  BATCH_SIZE: 22 #24 -> for backbone training / 40 -> for swinCVS Frozen / 4 -> for E2E training
   OPTIMIZER:
     NAME: 'adamw'
     EPS: 1.0e-08
     BETAS: [0.9, 0.999]
     WEIGHT_DECAY: 0.02
-    ENCODER_LR: 0.0000464158883
+    ENCODER_LR: 0.00001 #0.0000464158883
     CLASSIFIER_LR: 0.001
   CLASS_WEIGHTS: [3.19852941, 4.46153846, 2.79518072]
   WARMUP_EPOCHS: 4
@@ -52,7 +55,7 @@ TRAIN:
   ACCUMULATION_STEPS: 1
 # SWINV2 BACKBONE PARAMS
 BACKBONE:
-  PRETRAINED: 'Swin_backbone_no_augm_sd4_bestMAP.pt' #'swinv2_base_patch4_window12to24_192to384_22kto1k_ft.pth' #'Swin_backbone_no_augm_sd4_bestMAP.pt' - for backbone/E2E use IMGNet weights, for E2E use backbone weights
+  PRETRAINED: 'swinv2_base_patch4_window12to24_192to384_22kto1k_ft.pth' #'swinv2_base_patch4_window12to24_192to384_22kto1k_ft.pth' #'Swin_backbone_no_augm_sd4_bestMAP.pt' - for backbone/E2E use IMGNet weights, for E2E use backbone weights
   DROP_PATH_RATE: 0.2
   DROP_RATE: 0.0
   NUM_CLASSES: 1000

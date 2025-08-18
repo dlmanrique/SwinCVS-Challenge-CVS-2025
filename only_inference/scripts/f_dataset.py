@@ -13,7 +13,7 @@ def get_datasets(config):
     """
     Check dataset exists (download if not). Create dataset instances and apply transformations specified in config
     """
-    breakpoint()
+
     dataset_dir = config.DATASET_DIR
     
     print(f"\nDataset loaded from: {dataset_dir}")
@@ -44,7 +44,8 @@ def get_dataframe_test(config):
     """
     Get images from the dataset directory, create pandas dataframes of image filepaths and ground truths. 
     """
-    test_file = config.TEST_FILE
+
+    test_file = f'../format_challenge_data/Sages_fold{config.FOLD}_test_data.json'
     test_dataframe = get_dataframe(test_file)
     updated_test_dataframe = update_dataframe(test_dataframe, config.DATASET_DIR, config)
     

@@ -6,6 +6,7 @@ import json
 import os
 import wandb
 import warnings
+import random
 from datetime import datetime
 from pathlib import Path
 
@@ -43,9 +44,11 @@ parser.add_argument('--fps', type=int, required=False, default=0, choices=[10, 1
 parser.add_argument('--extend_method', type=str, required=False, default='None', choices=['balanced', 'unbalanced'])
 parser.add_argument('--frame_type_train', type=str, required=False, default='Original', choices=['Original', 'Preprocessed'])
 parser.add_argument('--frame_type_test', type=str, required=False, default='Original', choices=['Original', 'Preprocessed'])
+parser.add_argument('--DROP_PATH_RATE', type=float, required=False)
+parser.add_argument('--DROP_RATE', type=float, required=False)
 args = parser.parse_args()
 
-config, experiment_name = get_config(args.config_path)
+config, experiment_name = get_config(args)
 
 # Wanndb configuration ---------------------------------
 
@@ -77,14 +80,23 @@ complete_exp_info_folder = os.path.join(config.SAVING_DATASET, experiment_name, 
 
 
 seed = config.SEED
-set_deterministic_behaviour(seed)
+# Environment Standardisation
+random.seed(seed)                      # Set random seed
+np.random.seed(seed)                   # Set NumPy seed
+torch.manual_seed(seed)                # Set PyTorch seed
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+torch.cuda.manual_seed(seed)           # Set CUDA seed
+torch.use_deterministic_algorithms(True) # Force deterministic behavior
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # CUDA workspace config
 
 
 ##############################################################################################
 ##############################################################################################
 # DATASET and DATALOADER
-training_dataset, val_dataset, test_dataset = get_datasets(config, args)
-train_dataloader, val_dataloader, test_dataloader = get_dataloaders(config, training_dataset, val_dataset, test_dataset)
+training_dataset, val_dataset, test_dataset, wrs_weights = get_datasets(config, args)
+train_dataloader, val_dataloader, test_dataloader = get_dataloaders(config, training_dataset, val_dataset, test_dataset, wrs_weights)
+
 
 ##############################################################################################
 ##############################################################################################
@@ -154,7 +166,7 @@ if not config.MODEL.INFERENCE:
             # samples.shape -> (batch, 3, 384, 384)
             # targets.shape -> (batch, 3)
             samples, targets = samples.to('cuda'), targets.to('cuda')
-            
+
             with torch.amp.autocast("cuda", enabled=True):
                 if config.MODEL.E2E and config.MODEL.MULTICLASSIFIER:
                     outputs_swin, outputs_lstm = model(samples)
