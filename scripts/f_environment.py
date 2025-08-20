@@ -79,14 +79,19 @@ def download_extract_zip(download_path, url):
             zip_file_path.unlink()
             print(f"Cleaned up temporary zip file: {zip_file_path}")
 
-def get_config(config_path):
+def get_config(args):
     """
     Runs functions related to reading, processing, and informing user about the config setup.
     """
 
-    config_dict = read_config(config_path)
+    config_dict = read_config(args.config_path)
     config = config_to_yacs(config_dict)
     experiment_name = validate_config(config) # de aca espero un str vacio ""
+
+    if args.DROP_PATH_RATE:
+        config.BACKBONE.DROP_PATH_RATE = args.DROP_PATH_RATE
+    if args.DROP_RATE:
+        config.BACKBONE.DROP_RATE = args.DROP_RATE
 
     # Verify the selected model
     if not config.MODEL.LSTM:

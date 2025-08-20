@@ -7,6 +7,7 @@ import json
 import pandas as pd
 import shutil
 import wandb
+from torch.utils.data import WeightedRandomSampler
 
 from torchvision import transforms
 from pathlib import Path
@@ -24,12 +25,15 @@ def get_datasets(config, args):
     
     print(f"\nDataset loaded from: {dataset_dir}")
 
-    train_dataframe, val_dataframe, test_dataframe = get_three_dataframes(dataset_dir, config, args, lstm=config.MODEL.LSTM)
+    train_dataframe, val_dataframe, test_dataframe, wrs_weights = get_three_dataframes(dataset_dir, config, args, lstm=config.MODEL.LSTM)
 
 
     print(f'Number of keyframes on train split: {len(train_dataframe)}')
     print(f'Number of keyframes on valid split: {len(val_dataframe)}')
     print(f'Number of keyframes on test split: {len(test_dataframe)}')
+
+    if wrs_weights is not None:
+        print('Use WRS')
 
     if args.direction != 'None':
         # Sanity check info
@@ -42,21 +46,23 @@ def get_datasets(config, args):
         wandb.log({'Test data': test_file})
 
 
-    transform_sequence = get_transform_sequence(config)
+    transform_sequence_train = get_transform_sequence(config, split='train')
+    transform_sequence_test = get_transform_sequence(config, split='test')
+
     
     # If SwinCVS model
     if config.MODEL.LSTM:
-        training_dataset = EndoscapesSwinCVS_Dataset(train_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
-        val_dataset = EndoscapesSwinCVS_Dataset(val_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
-        test_dataset = EndoscapesSwinCVS_Dataset(test_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
+        training_dataset = EndoscapesSwinCVS_Dataset(train_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence_train)
+        val_dataset = EndoscapesSwinCVS_Dataset(val_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence_test)
+        test_dataset = EndoscapesSwinCVS_Dataset(test_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence_test)
 
     # If just SwinV2 backbone
     else:
-        training_dataset = Endoscapes_Dataset(train_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
-        val_dataset = Endoscapes_Dataset(val_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
-        test_dataset = Endoscapes_Dataset(test_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence)
+        training_dataset = Endoscapes_Dataset(train_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence_train)
+        val_dataset = Endoscapes_Dataset(val_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence_test)
+        test_dataset = Endoscapes_Dataset(test_dataframe[::config.TRAIN.LIMIT_DATA_FRACTION], transform_sequence_test)
 
-    return training_dataset, val_dataset, test_dataset
+    return training_dataset, val_dataset, test_dataset, wrs_weights
 
 def check_dataset(config):
     """
@@ -96,15 +102,24 @@ def check_dataset(config):
         download_extract_zip(dataset_dir.parent, 'https://s3.unistra.fr/camma_public/datasets/endoscapes/endoscapes.zip')
     return dataset_dir
 
-def get_dataloaders(config, training_dataset, val_dataset, test_dataset):
+def get_dataloaders(config, training_dataset, val_dataset, test_dataset, wrs_weights=None):
     """
     Create dataloaders from a given training datasets
     """
     print(f"Batch size: {config.TRAIN.BATCH_SIZE}")
-    train_dataloader = DataLoader(  training_dataset,
-                                    batch_size = config.TRAIN.BATCH_SIZE,
-                                    pin_memory = True,
-                                    shuffle = True)
+
+    if wrs_weights is not None:
+        
+        sampler = WeightedRandomSampler(weights=wrs_weights, num_samples=len(wrs_weights), replacement=True)
+        train_dataloader = DataLoader(  training_dataset,
+                                        batch_size = config.TRAIN.BATCH_SIZE,
+                                        pin_memory = True,
+                                        sampler=sampler)
+    else:
+        train_dataloader = DataLoader(  training_dataset,
+                                        batch_size = config.TRAIN.BATCH_SIZE,
+                                        pin_memory = True,
+                                        shuffle = True)
 
     val_dataloader = DataLoader(    val_dataset,
                                     batch_size = 1,
@@ -121,7 +136,7 @@ def get_three_dataframes(image_folder, config, args, lstm = False):
     """
     Get images from the dataset directory, create pandas dataframes of image filepaths and ground truths. 
     """
-
+    wrs_weights = None
     if config.DATASET == 'Endoscapes':
         # Specify directories for the splits
         train_dir = image_folder / 'train'
@@ -170,6 +185,20 @@ def get_three_dataframes(image_folder, config, args, lstm = False):
         val_dataframe = get_dataframe(val_file)
         test_dataframe = get_dataframe(test_file)
 
+        wrs_weights = None
+
+        if config.USE_WRS:
+
+            wrs_weights = []
+            train_dataframe['sum'] = train_dataframe['C1'] + train_dataframe['C2'] + train_dataframe['C3']
+            for _, row in train_dataframe.iterrows():
+                if row['sum'] == 3:
+                    #Positive class
+                    wrs_weights.append(1/768)
+                else:
+                    #Negative class
+                    wrs_weights.append(1/11832)
+
 
     if lstm:
         # Add unlabelled images to the dataframe
@@ -194,11 +223,11 @@ def get_three_dataframes(image_folder, config, args, lstm = False):
         return train_dataframe, val_dataframe, test_dataframe
 
     updated_train_dataframe = update_dataframe(train_dataframe, config.DATASET_DIR, config, args, 'train')
-    updated_val_dataframe = update_dataframe(val_dataframe, config.DATASET_DIR, config, args, 'valid')
+    updated_val_dataframe = update_dataframe(val_dataframe, config.DATASET_DIR, config, args, 'val')
     updated_test_dataframe = update_dataframe(test_dataframe, config.DATASET_DIR, config, args, 'test')
     
 
-    return updated_train_dataframe, updated_val_dataframe, updated_test_dataframe
+    return updated_train_dataframe, updated_val_dataframe, updated_test_dataframe, wrs_weights
 
 class Endoscapes_Dataset(Dataset):
     """
@@ -350,6 +379,7 @@ def update_dataframe(dataframe, image_folder, config, args, split):
     
     
     if config.DATASET == 'Endoscapes':
+        image_folder = os.path.join(image_folder, 'endoscapes',  f'{split}_cutmargins')
         dataframe['path'] = dataframe.apply(lambda row: generate_path(row, image_folder), axis=1)
 
     elif config.DATASET == 'Sages':
@@ -361,10 +391,10 @@ def update_dataframe(dataframe, image_folder, config, args, split):
             # Establezco que el train siempre sea preprocesado, lo que varia es el test
             image_folder = os.path.join(image_folder, 'frames_cutmargin')
         
-        elif args.frame_type_test == 'Preprocessed' and (split == 'valid' or split == 'test'):
+        elif args.frame_type_test == 'Preprocessed' and (split == 'val' or split == 'test'):
             image_folder = os.path.join(image_folder, 'frames_cutmargin')
 
-        elif args.frame_type_test == 'Original' and (split == 'valid' or split == 'test'):
+        elif args.frame_type_test == 'Original' and (split == 'val' or split == 'test'):
             image_folder = os.path.join(image_folder, 'frames')
 
 
@@ -425,9 +455,11 @@ def get_class(row):
 def get_endoscapes_mean_std(config):
     mean = config.TRAIN.TRANSFORMS.ENDOSCAPES_MEAN
     std = config.TRAIN.TRANSFORMS.ENDOSCAPES_STD
+
     return mean, std
 
-def get_transform_sequence(config):
+def get_transform_sequence(config, split):
+
     mean, std = get_endoscapes_mean_std(config)
     transform_sequence = transforms.Compose([   transforms.CenterCrop(config.TRAIN.TRANSFORMS.CENTER_CROP),
                                                 transforms.Resize((384, 384)),
@@ -435,4 +467,18 @@ def get_transform_sequence(config):
                                                 transforms.Normalize(
                                                     mean=torch.tensor(mean),
                                                     std=torch.tensor(std))])
+
+    if config.DATA_AUGMENTATION and split=='train':
+
+        transform_sequence = transforms.Compose([transforms.CenterCrop(config.TRAIN.TRANSFORMS.CENTER_CROP),
+                                                transforms.Resize((384, 384)),
+                                                transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.15, hue=0.05),
+                                                transforms.RandomHorizontalFlip(p=0.3),  # Reducido para endoscopia
+                                                
+                                                transforms.ToTensor(),
+                                                transforms.RandomErasing(p=0.1, scale=(0.02, 0.15)),  # Más conservador
+                                                transforms.Normalize(
+                                                    mean=torch.tensor(mean),
+                                                    std=torch.tensor(std))])
+
     return transform_sequence
