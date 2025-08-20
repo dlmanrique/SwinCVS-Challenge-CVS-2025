@@ -212,7 +212,6 @@ class Endoscapes_Dataset(Dataset):
         return len(self.image_dataframe)
     
     def __getitem__(self, idx):
-        breakpoint()
         image_info = self.image_dataframe.iloc[idx]
         image_path = image_info['path']
         label = torch.tensor(image_info['classification'])
@@ -223,7 +222,7 @@ class Endoscapes_Dataset(Dataset):
             image = self.transforms(image)
             image = (image-torch.min(image)) / (-torch.min(image)+torch.max(image)) #Normalize the image in the interval (0,1)
       
-        return image, label
+        return image, label, image_path
     
 class EndoscapesSwinCVS_Dataset(Dataset):
     """
